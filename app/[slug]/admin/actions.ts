@@ -33,11 +33,12 @@ export async function loginRestaurantAdmin(restaurantId: number, password: strin
 
   console.log("[v0] loginRestaurantAdmin - Password valid, setting session...")
   await setRestaurantAdminSession(restaurantId)
+  console.log("[v0] loginRestaurantAdmin - Session set, returning success with redirect URL")
   
-  // Redirect nach Login, damit Session sofort erkannt wird
+  // Return success with redirect URL instead of calling redirect() directly
+  // This allows the client component to handle the redirect after the cookie is set
   const dashboardPath = isCustomDomain ? "/admin/dashboard" : `/${slug}/admin/dashboard`
-  console.log("[v0] loginRestaurantAdmin - Redirecting to:", dashboardPath)
-  redirect(dashboardPath)
+  return { success: true, redirectUrl: dashboardPath }
 }
 
 export async function logoutRestaurantAdmin(slug: string, isCustomDomain = false) {
