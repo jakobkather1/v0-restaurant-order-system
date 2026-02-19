@@ -13,6 +13,7 @@ const geistSans = Geist({
   display: 'swap',
   preload: true,
   variable: '--font-geist-sans',
+  adjustFontFallback: false,
 })
 
 const geistMono = Geist_Mono({ 
@@ -20,6 +21,7 @@ const geistMono = Geist_Mono({
   display: 'swap',
   preload: true,
   variable: '--font-geist-mono',
+  adjustFontFallback: false,
 })
 
 // No static metadata in root layout - all metadata is generated dynamically in page.tsx
