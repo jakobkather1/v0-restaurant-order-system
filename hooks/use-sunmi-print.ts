@@ -13,7 +13,11 @@ interface SunmiPrintRequest {
     name: string
     variant?: string
     price: number
-    toppings: Array<{ name: string }>
+    basePrice?: number
+    toppings: Array<{ 
+      name: string
+      price?: number 
+    }>
     notes?: string
   }>
   subtotal: number
@@ -22,6 +26,7 @@ interface SunmiPrintRequest {
   total: number
   paymentMethod: 'cash' | 'card' | 'online'
   createdAt: string
+  estimatedTime?: string
 }
 
 interface SunmiPrintResponse {
@@ -88,6 +93,27 @@ export function useSunmiPrint() {
 
     try {
       console.log('[v0] Sending print request to Sunmi service')
+      console.log('[v0] Request data:', JSON.stringify({
+        orderNumber: request.orderNumber,
+        itemCount: request.items.length,
+        customerName: request.customerName,
+        customerAddress: request.customerAddress,
+        customerNotes: request.customerNotes,
+        subtotal: request.subtotal,
+        deliveryFee: request.deliveryFee,
+        total: request.total,
+        paymentMethod: request.paymentMethod,
+        estimatedTime: request.estimatedTime,
+        items: request.items.map(item => ({
+          name: item.name,
+          variant: item.variant,
+          quantity: item.quantity,
+          price: item.price,
+          toppingsCount: item.toppings?.length || 0,
+          notes: item.notes
+        }))
+      }, null, 2))
+      
       const response = await fetch(`${SUNMI_SERVICE_URL}/print`, {
         method: 'POST',
         headers: {

@@ -260,14 +260,14 @@ export function OrdersTab({ orders: initialOrders, restaurantId }: OrdersTabProp
             }
             body { 
               font-family: 'Courier New', monospace; 
-              font-size: 11px; 
+              font-size: 32px; 
               width: 57mm; 
               margin: 0 auto; 
               padding: 3mm;
               line-height: 1.3;
             }
             h1 { 
-              font-size: 14px; 
+              font-size: 40px; 
               margin: 0 0 5px; 
               text-align: center;
               font-weight: bold;
@@ -292,22 +292,22 @@ export function OrdersTab({ orders: initialOrders, restaurantId }: OrdersTabProp
               flex: 1;
               font-weight: bold;
               word-wrap: break-word;
-              font-size: 11px;
+              font-size: 32px;
             }
             .item-price {
               white-space: nowrap;
               font-weight: bold;
-              font-size: 11px;
+              font-size: 32px;
             }
             .topping { 
               padding-left: 10px; 
-              font-size: 10px; 
+              font-size: 28px; 
               color: #333;
               margin: 2px 0;
               line-height: 1.3;
             }
             .item-variant {
-              font-size: 10px;
+              font-size: 28px;
               padding-left: 10px;
               color: #555;
               font-style: italic;
@@ -315,13 +315,13 @@ export function OrdersTab({ orders: initialOrders, restaurantId }: OrdersTabProp
             }
             .total { 
               font-weight: bold; 
-              font-size: 13px; 
+              font-size: 38px; 
               margin-top: 5px;
               text-align: right;
             }
             .order-type { 
               font-weight: bold; 
-              font-size: 13px; 
+              font-size: 38px; 
               text-align: center; 
               padding: 5px; 
               border: 2px solid #000; 
@@ -331,17 +331,17 @@ export function OrdersTab({ orders: initialOrders, restaurantId }: OrdersTabProp
             }
             .section { 
               margin: 4px 0;
-              font-size: 9px;
+              font-size: 28px;
             }
             .label { 
               font-weight: bold;
-              font-size: 9px;
+              font-size: 28px;
             }
             .payment-badge {
               font-weight: bold; 
               text-align: center; 
               padding: 6px; 
-              font-size: 11px;
+              font-size: 32px;
               margin-top: 5px;
               border: 2px solid #000;
             }
@@ -356,7 +356,7 @@ export function OrdersTab({ orders: initialOrders, restaurantId }: OrdersTabProp
               color: #065f46;
             }
             .summary {
-              font-size: 9px;
+              font-size: 30px;
             }
           </style>
           <script>
@@ -398,7 +398,7 @@ export function OrdersTab({ orders: initialOrders, restaurantId }: OrdersTabProp
           
           <div class="order-type">${orderTypeLabel}</div>
           <h1>#${order.order_number || order.id}</h1>
-          <div style="text-align: center; font-size: 9px; margin-bottom: 5px;">
+          <div style="text-align: center; font-size: 28px; margin-bottom: 5px;">
             ${new Date(order.created_at).toLocaleString("de-DE", { 
               day: '2-digit', 
               month: '2-digit',
@@ -417,13 +417,13 @@ export function OrdersTab({ orders: initialOrders, restaurantId }: OrdersTabProp
           ${order.order_type === "delivery" ? `
             <div class="section">
               <span class="label">Adresse:</span><br/>
-              <span style="font-size: 9px;">${order.customer_address}</span>
+              <span style="font-size: 28px;">${order.customer_address}</span>
             </div>
           ` : ""}
           ${order.customer_notes ? `
             <div class="section">
               <span class="label">Notiz:</span><br/>
-              <em style="font-size: 9px;">${order.customer_notes}</em>
+              <em style="font-size: 28px;">${order.customer_notes}</em>
             </div>
           ` : ""}
           
@@ -437,7 +437,7 @@ export function OrdersTab({ orders: initialOrders, restaurantId }: OrdersTabProp
                 <span class="item-name">${item.quantity}x ${item.item_name}</span>
                 <span class="item-price">${Number(item.total_price).toFixed(2)}€</span>
               </div>
-              ${item.variant_name ? `<div style="font-size: 9px; padding-left: 8px;">${item.variant_name}</div>` : ""}
+              ${item.variant_name ? `<div style="font-size: 28px; padding-left: 8px;">${item.variant_name}</div>` : ""}
               ${item.toppings?.map((t) => `<div class="topping">+ ${t.topping_name}</div>`).join("") || ""}
               ${item.notes ? `<div class="topping"><em>! ${item.notes}</em></div>` : ""}
             </div>
@@ -461,7 +461,7 @@ export function OrdersTab({ orders: initialOrders, restaurantId }: OrdersTabProp
             ${order.payment_method === "cash" || !order.payment_method ? "BARZAHLUNG" : "ONLINE BEZAHLT"}
           </div>
           
-          <div style="text-align: center; font-size: 8px; margin-top: 8px; color: #666;">
+          <div style="text-align: center; font-size: 24px; margin-top: 8px; color: #666;">
             Vielen Dank!
           </div>
         </body>
