@@ -100,6 +100,28 @@ async function withRetry<T>(
 }
 
 /**
+ * Extrahiert die Client-IP aus einem x-forwarded-for Header
+ * Format: "client, proxy1, proxy2" -> "client"
+ */
+function extractClientIp(ipAddress: string | null): string {
+  if (!ipAddress) return '0.0.0.0'
+  
+  // x-forwarded-for kann mehrere IPs enthalten, getrennt durch Komma
+  // Wir wollen nur die erste (Client-IP)
+  const clientIp = ipAddress.split(',')[0].trim()
+  
+  // Validiere, dass es eine gültige IP ist
+  const ipv4Regex = /^(\d{1,3}\.){3}\d{1,3}$/
+  const ipv6Regex = /^([0-9a-fA-F]{0,4}:){2,7}[0-9a-fA-F]{0,4}$/
+  
+  if (ipv4Regex.test(clientIp) || ipv6Regex.test(clientIp)) {
+    return clientIp
+  }
+  
+  return '0.0.0.0'
+}
+
+/**
  * Speichert Consent in der Audit-Log-Datenbank
  */
 export async function logConsent(
@@ -127,10 +149,13 @@ export async function logConsent(
       // Speichere in DB - stringify consent für SQL übergabe
       const consentJson = JSON.stringify(consent)
       
+      // Extrahiere nur die Client-IP aus dem x-forwarded-for Header
+      const clientIp = extractClientIp(ipAddress)
+      
       await sql`
         SELECT log_consent(
           ${sessionId},
-          ${ipAddress || '0.0.0.0'}::inet,
+          ${clientIp}::inet,
           ${userAgent || ''}::text,
           ${consentJson}::jsonb,
           ${action},
