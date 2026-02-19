@@ -74,10 +74,10 @@ export function SettingsTab({ restaurant }: SettingsTabProps) {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       <div>
-        <h2 className="text-2xl font-bold">Einstellungen</h2>
-        <p className="text-muted-foreground">Stammdaten und Kontaktinformationen</p>
+        <h2 className="text-xl sm:text-2xl md:text-3xl font-bold">Einstellungen</h2>
+        <p className="text-sm sm:text-base text-muted-foreground">Stammdaten und Kontaktinformationen</p>
       </div>
 
       {message && (
@@ -91,7 +91,7 @@ export function SettingsTab({ restaurant }: SettingsTabProps) {
         </div>
       )}
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-4 sm:gap-6 grid-cols-1 lg:grid-cols-2">
         <Card>
           <CardHeader>
             <CardTitle>Allgemein</CardTitle>

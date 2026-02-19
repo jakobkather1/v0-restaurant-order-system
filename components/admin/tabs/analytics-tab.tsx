@@ -29,11 +29,11 @@ export function AnalyticsTab({ revenue, restaurant }: AnalyticsTabProps) {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold">Umsatz & Statistiken</h2>
-        <p className="text-muted-foreground">Übersicht der letzten 12 Monate (nach Stornierungen)</p>
+        <h2 className="text-xl sm:text-2xl md:text-3xl font-bold">Umsatz & Statistiken</h2>
+        <p className="text-sm sm:text-base text-muted-foreground">Übersicht der letzten 12 Monate (nach Stornierungen)</p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Aktueller Monat</CardTitle>
@@ -111,7 +111,8 @@ export function AnalyticsTab({ revenue, restaurant }: AnalyticsTabProps) {
             <CardTitle>Monatsübersicht</CardTitle>
           </CardHeader>
           <CardContent>
-            <Table>
+            <div className="overflow-x-auto">
+              <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Monat</TableHead>
@@ -133,6 +134,7 @@ export function AnalyticsTab({ revenue, restaurant }: AnalyticsTabProps) {
                 ))}
               </TableBody>
             </Table>
+            </div>
           </CardContent>
         </Card>
       )}

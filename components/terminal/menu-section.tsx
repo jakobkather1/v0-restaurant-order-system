@@ -299,7 +299,7 @@ export function MenuSection({
                       )}
           </div>
                   </div>
-                  <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+                  <div className="grid gap-3 sm:gap-4 md:gap-5 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                     {categoryItems.map((item) => {
                       const itemVariants = getItemVariants(item.id)
                       const minPrice = getMinPrice(item)
