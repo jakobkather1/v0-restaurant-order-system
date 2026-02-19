@@ -7,11 +7,6 @@ import { Pool } from "@neondatabase/serverless"
 // This is safe because all SQL runs on the server only (import "server-only" above)
 neonConfig.disableWarningInBrowsers = true
 
-// Disable WebSocket warnings in development
-if (process.env.NODE_ENV !== 'production') {
-  neonConfig.fetchConnectionCache = true
-}
-
 // Suppress fetch warnings - we're using this only on the server
 neonConfig.webSocketConstructor = undefined
 
