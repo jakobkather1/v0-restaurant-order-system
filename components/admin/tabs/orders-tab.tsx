@@ -25,6 +25,8 @@ export function OrdersTab({ orders: initialOrders, restaurantId }: OrdersTabProp
   const [viewMode, setViewMode] = useState<"active" | "archive">("active")
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false)
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
+  const [previousOrderCount, setPreviousOrderCount] = useState(initialOrders.length)
+  const [newOrderIds, setNewOrderIds] = useState<Set<number>>(new Set())
   
   // Sunmi Print Integration
   const { print: printToSunmi, isSunmiAvailable, checkSunmiService } = useSunmiPrint()
@@ -35,7 +37,11 @@ export function OrdersTab({ orders: initialOrders, restaurantId }: OrdersTabProp
 
   const { data: activeData, mutate: mutateActive } = useSWR(`/api/orders?restaurantId=${restaurantId}`, fetcher, {
     fallbackData: { orders: initialOrders, items: {} },
-    refreshInterval: 5000,
+    refreshInterval: 2000, // Poll every 2 seconds for near real-time updates
+    refreshWhenHidden: false, // Don't poll when tab is hidden to save resources
+    refreshWhenOffline: false, // Don't poll when offline
+    revalidateOnFocus: true, // Immediately check when user returns to tab
+    dedupingInterval: 1000, // Prevent duplicate requests within 1 second
   })
 
   const { data: archiveData, mutate: mutateArchive } = useSWR(
@@ -57,15 +63,94 @@ export function OrdersTab({ orders: initialOrders, restaurantId }: OrdersTabProp
 
   const [estimatedTimes, setEstimatedTimes] = useState<Record<number, string>>({})
 
+  // Detect new orders and play notification sound
+  useEffect(() => {
+    if (viewMode !== "active" || !activeOrders.length) return
+    
+    const currentCount = activeOrders.length
+    const currentIds = new Set(activeOrders.map((o) => o.id))
+    
+    // Check if there are new orders (count increased)
+    if (currentCount > previousOrderCount) {
+      // Find which orders are new
+      const newOrders = activeOrders.filter((order) => {
+        // New if it's a pending order and we haven't seen it before
+        return order.status === "pending" && !previousOrderCount
+      })
+      
+      if (newOrders.length > 0) {
+        // Mark new orders for highlighting
+        const newIds = new Set(newOrders.map((o) => o.id))
+        setNewOrderIds(newIds)
+        
+        // Play notification sound
+        try {
+          const audio = new Audio("/notification.mp3")
+          audio.volume = 0.5
+          audio.play().catch(() => {
+            // Silently fail if audio can't play (user interaction required)
+          })
+        } catch (error) {
+          // Ignore audio errors
+        }
+        
+        // Show toast notification
+        toast.success(`${newOrders.length} neue Bestellung${newOrders.length > 1 ? "en" : ""} eingetroffen!`, {
+          duration: 5000,
+        })
+        
+        // Remove highlighting after 10 seconds
+        setTimeout(() => {
+          setNewOrderIds(new Set())
+        }, 10000)
+      }
+    }
+    
+    setPreviousOrderCount(currentCount)
+  }, [activeOrders, previousOrderCount, viewMode])
+
   async function handleComplete(orderId: number) {
-    await markOrderCompleted(orderId)
-    mutateActive()
+    // Optimistic UI update - immediately remove from active orders
+    mutateActive(
+      async () => {
+        await markOrderCompleted(orderId)
+        return fetch(`/api/orders?restaurantId=${restaurantId}`).then(r => r.json())
+      },
+      {
+        optimisticData: {
+          orders: activeOrders.filter(o => o.id !== orderId),
+          items: activeItems
+        },
+        rollbackOnError: true,
+        revalidate: true
+      }
+    )
     mutateArchive()
   }
 
   async function handleStatusChange(orderId: number, status: string) {
-    await updateOrderStatus(orderId, status)
-    mutate()
+    // Optimistic UI update - immediately update status in UI
+    const optimisticOrders = orders.map(o => 
+      o.id === orderId ? { ...o, status } : o
+    )
+    
+    mutate(
+      async () => {
+        await updateOrderStatus(orderId, status)
+        const endpoint = viewMode === "active" 
+          ? `/api/orders?restaurantId=${restaurantId}`
+          : `/api/orders/archive?restaurantId=${restaurantId}`
+        return fetch(endpoint).then(r => r.json())
+      },
+      {
+        optimisticData: {
+          orders: optimisticOrders,
+          items: orderItems
+        },
+        rollbackOnError: true,
+        revalidate: true
+      }
+    )
   }
 
   async function handleSetTime(orderId: number) {
@@ -444,9 +529,15 @@ export function OrdersTab({ orders: initialOrders, restaurantId }: OrdersTabProp
             const isArchived = viewMode === "archive"
             const isCancelled = order.status === "cancelled" || order.is_cancelled
             return (
-              <Card 
-                key={order.id} 
-                className={`overflow-hidden ${isArchived ? "opacity-75" : ""} ${isCancelled ? "border-red-500 dark:border-red-700 border-2" : ""}`}
+              <Card
+                key={order.id}
+                className={`${
+                  order.order_type === "delivery"
+                    ? "border-l-4 border-l-blue-500"
+                    : order.order_type === "pickup"
+                      ? "border-l-4 border-l-green-500"
+                      : "border-l-4 border-l-purple-500"
+                } ${newOrderIds.has(order.id) ? "animate-pulse ring-2 ring-yellow-400 shadow-lg" : ""}`}
               >
                 <CardHeader className="pb-3">
                   <div className="flex items-center justify-between flex-wrap gap-2">
