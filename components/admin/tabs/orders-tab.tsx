@@ -719,18 +719,13 @@ export function OrdersTab({ orders: initialOrders, restaurantId }: OrdersTabProp
                         <Button 
                           variant="outline" 
                           className="w-full justify-start"
-                          onClick={async () => {
-                            // Accept the order first
-                            await handleStatusChange(order.id, "confirmed")
-                            
-                            // Then automatically print based on Sunmi availability
-                            // This checks Sunmi first, falls back to browser print if unavailable
+                          onClick={() => {
+                            // Print order - checks Sunmi first, falls back to browser print if unavailable
                             printOrder(order, items)
                           }}
-                          disabled={order.status !== "pending"}
                         >
                           <Printer className="mr-2 h-4 w-4" />
-                          {order.status === "pending" ? "Annehmen" : "Angenommen"}
+                          Drucken
                         </Button>
                         <Button 
                           variant="outline" 
