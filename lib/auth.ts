@@ -228,7 +228,7 @@ export async function setRestaurantAdminSession(restaurantId: number) {
     cookieStore.set("restaurant_admin_session", sessionData, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "strict", // Changed from "lax" to "strict" for better security and reliability
+      sameSite: "lax", // "lax" allows cookie to be sent on same-site redirects (required for server-side redirect after login)
       maxAge: 60 * 60 * 24, // 24 hours
       path: "/",
     })
