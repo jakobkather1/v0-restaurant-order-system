@@ -12,7 +12,14 @@ neonConfig.webSocketConstructor = undefined
 
 // Connection pooling for better performance
 // Use pooled connection for faster queries
-const sql = neon(process.env.DATABASE_URL!, {
+// Fallback to empty string to prevent crashes during HMR
+const databaseUrl = process.env.DATABASE_URL || ''
+
+if (!databaseUrl) {
+  console.error('[FATAL] DATABASE_URL environment variable is not set!')
+}
+
+const sql = neon(databaseUrl, {
   fetchOptions: {
     cache: 'no-store', // Disable fetch cache for fresh data
   },
