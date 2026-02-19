@@ -38,11 +38,11 @@ export function OrdersTab({ orders: initialOrders, restaurantId }: OrdersTabProp
 
   const { data: activeData, mutate: mutateActive } = useSWR(`/api/orders?restaurantId=${restaurantId}`, fetcher, {
     fallbackData: { orders: initialOrders, items: {} },
-    refreshInterval: 30000, // Poll every 30 seconds as fallback (SSE handles real-time updates)
+    refreshInterval: 5000, // Poll every 5 seconds (primary update mechanism since SSE may not work on all deployments)
     refreshWhenHidden: false, // Don't poll when tab is hidden to save resources
     refreshWhenOffline: false, // Don't poll when offline
     revalidateOnFocus: true, // Immediately check when user returns to tab
-    dedupingInterval: 5000, // Prevent duplicate requests within 5 seconds
+    dedupingInterval: 2000, // Prevent duplicate requests within 2 seconds
   })
 
   const { data: archiveData, mutate: mutateArchive } = useSWR(
@@ -98,8 +98,10 @@ export function OrdersTab({ orders: initialOrders, restaurantId }: OrdersTabProp
       }
     )
     
-    // Trigger immediate data refresh to fetch full order details
-    mutateActive()
+    // CRITICAL: Force immediate revalidation to fetch full order details
+    // Using revalidate() ensures the UI updates without manual reload
+    console.log('[v0] Triggering immediate order refresh after SSE notification')
+    mutateActive(undefined, { revalidate: true })
     
     // Remove highlighting after 15 seconds
     setTimeout(() => {
@@ -117,6 +119,13 @@ export function OrdersTab({ orders: initialOrders, restaurantId }: OrdersTabProp
     onNewOrder: handleNewOrder,
     enabled: viewMode === "active"
   })
+
+  // Log SSE connection status for debugging
+  useEffect(() => {
+    console.log(`[v0] SSE connection status: ${isStreamConnected ? 'CONNECTED' : 'DISCONNECTED'}`)
+    console.log(`[v0] View mode: ${viewMode}`)
+    console.log(`[v0] Active orders count: ${activeOrders.length}`)
+  }, [isStreamConnected, viewMode, activeOrders.length])
 
   async function handleComplete(orderId: number) {
     // Optimistic UI update - immediately remove from active orders
