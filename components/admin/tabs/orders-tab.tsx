@@ -186,24 +186,35 @@ export function OrdersTab({ orders: initialOrders, restaurantId }: OrdersTabProp
         restaurantId: String(restaurantId),
         orderNumber: String(order.order_number || order.id),
         orderType: order.order_type as "delivery" | "pickup",
-        customerName: order.customer_name,
-        customerPhone: order.customer_phone,
+        customerName: order.customer_name || "Gast",
+        customerPhone: order.customer_phone || "",
         customerAddress: order.customer_address || undefined,
         customerNotes: order.customer_notes || undefined,
-        items: items.map(item => ({
-          quantity: item.quantity,
-          name: item.item_name,
-          variant: item.variant_name || undefined,
-          price: Number(item.total_price),
-          toppings: item.toppings?.map(t => ({ name: t.topping_name })) || [],
-          notes: item.notes || undefined,
-        })),
-        subtotal: Number(order.subtotal),
-        discountAmount: Number(order.discount_amount) || undefined,
-        deliveryFee: Number(order.delivery_fee) || undefined,
-        total: Number(order.total),
+        items: items.map(item => {
+          // Ensure all item details are included
+          const itemPrice = Number(item.total_price) || 0
+          const basePrice = item.variant_price ? Number(item.variant_price) : Number(item.base_price) || 0
+          
+          return {
+            quantity: item.quantity || 1,
+            name: item.item_name || "Artikel",
+            variant: item.variant_name || undefined,
+            price: itemPrice,
+            basePrice: basePrice,
+            toppings: item.toppings?.map(t => ({ 
+              name: t.topping_name,
+              price: Number(t.price) || 0
+            })) || [],
+            notes: item.notes || undefined,
+          }
+        }),
+        subtotal: Number(order.subtotal) || 0,
+        discountAmount: order.discount_amount ? Number(order.discount_amount) : undefined,
+        deliveryFee: order.delivery_fee ? Number(order.delivery_fee) : undefined,
+        total: Number(order.total) || 0,
         paymentMethod: (order.payment_method || "cash") as "cash" | "card" | "online",
         createdAt: order.created_at,
+        estimatedTime: order.estimated_time_minutes ? `${order.estimated_time_minutes} min` : undefined,
       }
       
       const result = await printToSunmi(printData)
@@ -249,11 +260,11 @@ export function OrdersTab({ orders: initialOrders, restaurantId }: OrdersTabProp
             }
             body { 
               font-family: 'Courier New', monospace; 
-              font-size: 10px; 
+              font-size: 11px; 
               width: 57mm; 
               margin: 0 auto; 
               padding: 3mm;
-              line-height: 1.2;
+              line-height: 1.3;
             }
             h1 { 
               font-size: 14px; 
@@ -281,16 +292,25 @@ export function OrdersTab({ orders: initialOrders, restaurantId }: OrdersTabProp
               flex: 1;
               font-weight: bold;
               word-wrap: break-word;
+              font-size: 11px;
             }
             .item-price {
               white-space: nowrap;
               font-weight: bold;
-              font-size: 10px;
+              font-size: 11px;
             }
             .topping { 
-              padding-left: 8px; 
-              font-size: 9px; 
+              padding-left: 10px; 
+              font-size: 10px; 
               color: #333;
+              margin: 2px 0;
+              line-height: 1.3;
+            }
+            .item-variant {
+              font-size: 10px;
+              padding-left: 10px;
+              color: #555;
+              font-style: italic;
               margin: 1px 0;
             }
             .total { 
