@@ -42,7 +42,7 @@ export function middleware(request: NextRequest) {
 
   // Check if this is a Vercel deployment (include it in platform)
   const isVercelDomain = VERCEL_DEPLOYMENT_DOMAINS.some((domain) =>
-    hostWithoutPort.includes(domain)
+    hostWithoutPort.endsWith(domain)
   )
 
   // Check if this is localhost (development)
