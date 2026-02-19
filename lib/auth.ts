@@ -209,12 +209,21 @@ export async function verifyPassword(password: string, hash: string) {
 
 export async function getRestaurantAdminSession() {
   try {
+    console.log("[v0] getRestaurantAdminSession - Reading session cookie...")
     const cookieStore = await cookies()
     const session = cookieStore.get("restaurant_admin_session")
-    if (!session?.value) return null
-
-    return JSON.parse(session.value) as { restaurantId: number }
-  } catch {
+    console.log("[v0] getRestaurantAdminSession - Cookie value:", session?.value)
+    
+    if (!session?.value) {
+      console.log("[v0] getRestaurantAdminSession - No session found")
+      return null
+    }
+    
+    const parsed = JSON.parse(session.value) as { restaurantId: number }
+    console.log("[v0] getRestaurantAdminSession - Parsed session:", parsed)
+    return parsed
+  } catch (error) {
+    console.error("[v0] getRestaurantAdminSession - Error:", error)
     return null
   }
 }
