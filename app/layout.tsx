@@ -12,12 +12,16 @@ const geistSans = Geist({
   subsets: ["latin"],
   display: 'swap',
   preload: true,
+  variable: '--font-geist-sans',
+  adjustFontFallback: false,
 })
 
 const geistMono = Geist_Mono({ 
   subsets: ["latin"],
   display: 'swap',
   preload: true,
+  variable: '--font-geist-mono',
+  adjustFontFallback: false,
 })
 
 // No static metadata in root layout - all metadata is generated dynamically in page.tsx
@@ -47,7 +51,7 @@ export default async function RootLayout({
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="dns-prefetch" href="https://c-2.eu-central-1.aws.neon.tech" />
       </head>
-      <body className={`font-sans antialiased w-screen max-w-full`}>
+      <body className={`${geistSans.variable} ${geistMono.variable} font-sans antialiased w-screen max-w-full`}>
         <ServiceWorkerProvider />
         <ClientCookieWrapper settings={settings} categories={categories}>
           <AnalyticsManager />
