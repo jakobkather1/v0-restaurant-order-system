@@ -495,14 +495,14 @@ export function OrdersTab({ orders: initialOrders, restaurantId }: OrdersTabProp
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold">Bestellungen</h2>
-          <p className="text-muted-foreground">Verwalte eingehende und abgeschlossene Bestellungen</p>
+          <h2 className="text-xl sm:text-2xl md:text-3xl font-bold">Bestellungen</h2>
+          <p className="text-sm sm:text-base text-muted-foreground">Verwalte eingehende und abgeschlossene Bestellungen</p>
         </div>
         
         {/* Sunmi Status Indicator */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           {isSunmiAvailable === null ? (
             <Badge variant="outline" className="text-xs">
               <Printer className="h-3 w-3 mr-1" />
@@ -521,11 +521,11 @@ export function OrdersTab({ orders: initialOrders, restaurantId }: OrdersTabProp
           )}
         </div>
         
-        <div className="flex gap-2 flex-wrap">
-          <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as "active" | "archive")}>
-            <TabsList>
-              <TabsTrigger value="active" className="flex items-center gap-2">
-                <Clock className="h-4 w-4" />
+        <div className="flex gap-2 flex-wrap w-full sm:w-auto">
+          <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as "active" | "archive")} className="w-full sm:w-auto">
+            <TabsList className="grid w-full grid-cols-2 sm:w-auto sm:inline-flex">
+              <TabsTrigger value="active" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
+                <Clock className="h-3 w-3 sm:h-4 sm:w-4" />
                 Aktiv ({activeOrders.length})
                 {viewMode === "active" && (
                   isStreamConnected ? (
@@ -535,15 +535,15 @@ export function OrdersTab({ orders: initialOrders, restaurantId }: OrdersTabProp
                   )
                 )}
               </TabsTrigger>
-              <TabsTrigger value="archive" className="flex items-center gap-2">
-                <Archive className="h-4 w-4" />
+              <TabsTrigger value="archive" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
+                <Archive className="h-3 w-3 sm:h-4 sm:w-4" />
                 Archiv
               </TabsTrigger>
             </TabsList>
           </Tabs>
-          <Button variant="outline" size="sm" onClick={() => mutate()}>
-            <RefreshCw className="mr-2 h-4 w-4" />
-            Aktualisieren
+          <Button variant="outline" size="sm" onClick={() => mutate()} className="w-full sm:w-auto">
+            <RefreshCw className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+            <span className="text-xs sm:text-sm">Aktualisieren</span>
           </Button>
         </div>
       </div>
