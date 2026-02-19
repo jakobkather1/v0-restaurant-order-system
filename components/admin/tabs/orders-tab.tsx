@@ -587,37 +587,35 @@ export function OrdersTab({ orders: initialOrders, restaurantId }: OrdersTabProp
 
                   {!isArchived && !isCancelled && (
                     <>
-                      <div className="flex flex-col gap-2 pt-3 border-t">
-                        <Button 
-                          variant="outline" 
-                          className="w-full justify-start"
-                          onClick={() => {
-                            handleStatusChange(order.id, "confirmed")
-                            printOrder(order, items)
-                          }}
-                          disabled={order.status !== "pending"}
-                        >
-                          <Printer className="mr-2 h-4 w-4" />
-                          {order.status === "pending" ? "Annehmen" : "Angenommen"}
+                      <div className="flex gap-2 pt-3 border-t flex-wrap">
+                        <Select value={order.status} onValueChange={(v) => handleStatusChange(order.id, v)}>
+                          <SelectTrigger className="flex-1 min-w-[140px]">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="pending">Neu</SelectItem>
+                            <SelectItem value="confirmed">Bestätigt</SelectItem>
+                            <SelectItem value="preparing">In Zubereitung</SelectItem>
+                            <SelectItem value="ready">Fertig</SelectItem>
+                            <SelectItem value="delivered">Geliefert</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <Button variant="outline" size="icon" onClick={() => printOrder(order, items)}>
+                          <Printer className="h-4 w-4" />
                         </Button>
                         <Button 
                           variant="outline" 
-                          className="w-full justify-start"
-                          onClick={() => handleComplete(order.id)}
-                        >
-                          <Check className="mr-2 h-4 w-4" />
-                          Erledigt
-                        </Button>
-                        <Button 
-                          variant="outline" 
-                          className="w-full justify-start text-destructive hover:text-destructive bg-transparent"
+                          size="icon"
+                          className="text-destructive hover:text-destructive bg-transparent"
                           onClick={() => {
                             setSelectedOrder(order)
                             setCancelDialogOpen(true)
                           }}
                         >
-                          <Ban className="mr-2 h-4 w-4" />
-                          Stornieren
+                          <Ban className="h-4 w-4" />
+                        </Button>
+                        <Button size="icon" onClick={() => handleComplete(order.id)}>
+                          <Check className="h-4 w-4" />
                         </Button>
                       </div>
                     </>
