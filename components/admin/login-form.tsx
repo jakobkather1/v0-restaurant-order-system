@@ -53,18 +53,20 @@ export function AdminLoginForm({ restaurant, isCustomDomain }: AdminLoginFormPro
     const formData = new FormData(e.currentTarget)
     const password = formData.get("password") as string
 
-    const result = await loginRestaurantAdmin(restaurant.id, password)
-    if (result?.error) {
-      setError(result.error)
+    try {
+      // Server Action mit redirect - keine explizite Weiterleitung nötig
+      await loginRestaurantAdmin(restaurant.id, password, restaurant.slug, useCustomDomain)
+      // Wenn wir hier ankommen, gab es einen Fehler (redirect wirft)
+    } catch (error: any) {
+      // Server Actions mit redirect werfen einen NEXT_REDIRECT Error
+      // Das ist normal und bedeutet erfolgreicher Login
+      if (error?.message?.includes('NEXT_REDIRECT')) {
+        return // Redirect erfolgreich
+      }
+      
+      // Echter Fehler
+      setError(error?.message || "Login fehlgeschlagen")
       setLoading(false)
-    } else {
-      // Redirect based on domain type
-      const dashboardPath = useCustomDomain 
-        ? "/admin/dashboard" 
-        : `/${restaurant.slug}/admin/dashboard`
-      console.log("[v0] Admin Login - Redirecting to:", dashboardPath)
-      console.log("[v0] Admin Login - Using custom domain:", useCustomDomain)
-      router.push(dashboardPath)
     }
   }
 

@@ -12,7 +12,7 @@ import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
 import type { Restaurant } from "@/lib/types"
 
-export async function loginRestaurantAdmin(restaurantId: number, password: string) {
+export async function loginRestaurantAdmin(restaurantId: number, password: string, slug: string, isCustomDomain = false) {
   console.log("[v0] loginRestaurantAdmin - Starting login for restaurant:", restaurantId)
   
   const result = await sql`SELECT admin_password_hash FROM restaurants WHERE id = ${restaurantId}`
@@ -35,7 +35,10 @@ export async function loginRestaurantAdmin(restaurantId: number, password: strin
   await setRestaurantAdminSession(restaurantId)
   console.log("[v0] loginRestaurantAdmin - Session set successfully")
   
-  return { success: true }
+  // Redirect nach Login, damit Session sofort erkannt wird
+  const dashboardPath = isCustomDomain ? "/admin/dashboard" : `/${slug}/admin/dashboard`
+  console.log("[v0] loginRestaurantAdmin - Redirecting to:", dashboardPath)
+  redirect(dashboardPath)
 }
 
 export async function logoutRestaurantAdmin(slug: string, isCustomDomain = false) {
