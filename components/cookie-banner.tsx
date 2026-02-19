@@ -135,8 +135,8 @@ interface CookieBannerProps {
 }
 
 export function CookieBanner({ settings, categories }: CookieBannerProps) {
-  // Start with null to indicate we haven't checked yet
-  const [isVisible, setIsVisible] = useState<boolean | null>(null)
+  // IMPORTANT: Start with false to prevent hydration mismatch (server renders without banner)
+  const [isVisible, setIsVisible] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
   const [consent, setConsent] = useState<CookieConsent>(() => {
     const initial: CookieConsent = { necessary: true, functional: false, analytics: false, marketing: false }
@@ -146,39 +146,32 @@ export function CookieBanner({ settings, categories }: CookieBannerProps) {
     return initial
   })
 
-  // Check for existing consent on mount with server validation - only once
+  // Check localStorage on mount (client-only) - ONLY ONCE
   useEffect(() => {
-    console.log("[v0] Cookie banner: Checking consent status...")
-    
     if (!settings.is_active) {
-      console.log("[v0] Cookie banner: Settings inactive, hiding banner")
-      setIsVisible(false)
       return
     }
     
-    // Validate consent with server - ONLY ONCE
-    fetch("/api/consent")
-      .then((res) => res.json())
-      .then((data) => {
-        console.log("[v0] Cookie banner: API response:", data)
-        if (data.hasConsent && data.consent) {
-          // User already has valid consent - hide banner
-          console.log("[v0] Cookie banner: Valid consent found, hiding banner")
-          setConsent(data.consent)
-          setIsVisible(false)
-        } else {
-          // No valid consent - show banner
-          console.log("[v0] Cookie banner: No valid consent, showing banner")
-          setIsVisible(true)
-        }
-      })
-      .catch((error) => {
-        console.error("[v0] Cookie banner: Error checking consent:", error)
-        // Fallback to showing banner on error
-        console.log("[v0] Cookie banner: Error occurred, showing banner as fallback")
-        setIsVisible(true)
-      })
-  }, [settings.is_active, categories])
+    // Check localStorage for existing consent
+    const storedConsent = localStorage.getItem('cookie-consent')
+    
+    if (storedConsent) {
+      try {
+        const parsed = JSON.parse(storedConsent)
+        console.log("[v0] Cookie banner: Found stored consent, hiding banner")
+        setConsent(parsed)
+        setIsVisible(false) // Keep banner hidden
+      } catch (error) {
+        console.error("[v0] Cookie banner: Failed to parse stored consent", error)
+        localStorage.removeItem('cookie-consent')
+        setIsVisible(true) // Show banner if consent is corrupted
+      }
+    } else {
+      // No stored consent - show banner
+      console.log("[v0] Cookie banner: No stored consent found, showing banner")
+      setIsVisible(true)
+    }
+  }, [settings.is_active])
 
   // Handle accept all
   const handleAcceptAll = useCallback(async () => {
@@ -187,19 +180,19 @@ export function CookieBanner({ settings, categories }: CookieBannerProps) {
       allAccepted[cat.slug] = true
     })
     
-    // Save to server with audit logging
-    try {
-      await fetch("/api/consent", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          preferences: allAccepted,
-          userAgent: navigator.userAgent 
-        }),
-      })
-    } catch (error) {
-      console.error("[v0] Failed to save consent to server:", error)
-    }
+    // Save to localStorage for persistence
+    localStorage.setItem('cookie-consent', JSON.stringify(allAccepted))
+    console.log("[v0] Cookie banner: Saved 'accept all' to localStorage")
+    
+    // Also save to server for audit logging (non-blocking)
+    fetch("/api/consent", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ 
+        preferences: allAccepted,
+        userAgent: navigator.userAgent 
+      }),
+    }).catch(error => console.error("[v0] Failed to save consent to server:", error))
     
     setConsent(allAccepted)
     setIsVisible(false)
@@ -215,19 +208,19 @@ export function CookieBanner({ settings, categories }: CookieBannerProps) {
       onlyRequired[cat.slug] = cat.is_required
     })
     
-    // Save to server with audit logging
-    try {
-      await fetch("/api/consent", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          preferences: onlyRequired,
-          userAgent: navigator.userAgent 
-        }),
-      })
-    } catch (error) {
-      console.error("[v0] Failed to save consent to server:", error)
-    }
+    // Save to localStorage for persistence
+    localStorage.setItem('cookie-consent', JSON.stringify(onlyRequired))
+    console.log("[v0] Cookie banner: Saved 'reject all' to localStorage")
+    
+    // Also save to server for audit logging (non-blocking)
+    fetch("/api/consent", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ 
+        preferences: onlyRequired,
+        userAgent: navigator.userAgent 
+      }),
+    }).catch(error => console.error("[v0] Failed to save consent to server:", error))
     
     setConsent(onlyRequired)
     setIsVisible(false)
@@ -237,19 +230,19 @@ export function CookieBanner({ settings, categories }: CookieBannerProps) {
 
   // Handle save settings
   const handleSaveSettings = useCallback(async () => {
-    // Save to server with audit logging
-    try {
-      await fetch("/api/consent", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          preferences: consent,
-          userAgent: navigator.userAgent 
-        }),
-      })
-    } catch (error) {
-      console.error("[v0] Failed to save consent to server:", error)
-    }
+    // Save to localStorage for persistence
+    localStorage.setItem('cookie-consent', JSON.stringify(consent))
+    console.log("[v0] Cookie banner: Saved custom settings to localStorage")
+    
+    // Also save to server for audit logging (non-blocking)
+    fetch("/api/consent", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ 
+        preferences: consent,
+        userAgent: navigator.userAgent 
+      }),
+    }).catch(error => console.error("[v0] Failed to save consent to server:", error))
     
     setIsVisible(false)
     
@@ -267,14 +260,8 @@ export function CookieBanner({ settings, categories }: CookieBannerProps) {
     }))
   }
 
-  // Don't render if settings are inactive
-  if (!settings.is_active) return null
-  
-  // Don't render until we've checked (null = still checking)
-  if (isVisible === null) return null
-  
-  // Don't render if banner should be hidden (user already consented)
-  if (isVisible === false) return null
+  // Don't render if settings are inactive or banner should be hidden
+  if (!settings.is_active || !isVisible) return null
 
   // Position classes
   const positionClasses = {
