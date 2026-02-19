@@ -567,7 +567,7 @@ export function OrdersTab({ orders: initialOrders, restaurantId }: OrdersTabProp
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {orders.map((order) => {
             const items = orderItems[order.id] || []
             const isPickup = order.order_type === "pickup"

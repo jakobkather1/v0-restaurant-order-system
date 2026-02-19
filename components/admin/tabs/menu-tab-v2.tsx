@@ -641,18 +641,18 @@ export function MenuTabV2({
 
       {/* Floating Save Button */}
       {hasUnsavedChanges && (
-        <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-2">
+        <div className="fixed bottom-4 sm:bottom-6 right-4 sm:right-6 z-50 flex flex-col gap-2">
           <Button
             size="lg"
             onClick={handleSaveAll}
             disabled={isSaving}
-            className="rounded-full shadow-lg h-14 px-6 min-w-[160px]"
+            className="rounded-full shadow-lg h-12 sm:h-14 px-4 sm:px-6 min-w-[140px] sm:min-w-[160px]"
           >
-            <Save className="mr-2 h-5 w-5" />
-            <span className="font-bold">
+            <Save className="mr-2 h-4 w-4 sm:h-5 sm:w-5" />
+            <span className="font-bold text-sm sm:text-base">
               {isSaving ? "Speichert..." : "Speichern"}
             </span>
-            <span className="ml-2 bg-white/20 rounded-full px-2 py-0.5 text-sm">
+            <span className="ml-2 bg-white/20 rounded-full px-2 py-0.5 text-xs sm:text-sm">
               {pendingChanges.length}
             </span>
           </Button>
@@ -661,7 +661,7 @@ export function MenuTabV2({
             variant="outline"
             onClick={handleDiscardAll}
             disabled={isSaving}
-            className="rounded-full shadow-lg"
+            className="rounded-full shadow-lg text-xs sm:text-sm"
           >
             Verwerfen
           </Button>
