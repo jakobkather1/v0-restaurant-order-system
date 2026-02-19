@@ -4,14 +4,15 @@ import { markOrderCompleted, updateOrderStatus, setOrderEstimatedTime } from "@/
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Check, Clock, Phone, MapPin, Printer, RefreshCw, Timer, Truck, Store, Archive, Ban } from "lucide-react"
+import { Check, Clock, Phone, MapPin, Printer, RefreshCw, Timer, Truck, Store, Archive, Ban, Wifi, WifiOff } from "lucide-react"
 import type { Order, OrderItem } from "@/lib/types"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { CancelOrderDialog } from "@/components/admin/cancel-order-dialog"
 import { useSunmiPrint } from "@/hooks/use-sunmi-print"
+import { useOrderStream, type StreamedOrder } from "@/hooks/use-order-stream"
 import { toast } from "sonner"
 
 interface OrdersTabProps {
@@ -25,6 +26,8 @@ export function OrdersTab({ orders: initialOrders, restaurantId }: OrdersTabProp
   const [viewMode, setViewMode] = useState<"active" | "archive">("active")
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false)
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
+  const [previousOrderCount, setPreviousOrderCount] = useState(initialOrders.length)
+  const [newOrderIds, setNewOrderIds] = useState<Set<number>>(new Set())
   
   // Sunmi Print Integration
   const { print: printToSunmi, isSunmiAvailable, checkSunmiService } = useSunmiPrint()
@@ -35,7 +38,11 @@ export function OrdersTab({ orders: initialOrders, restaurantId }: OrdersTabProp
 
   const { data: activeData, mutate: mutateActive } = useSWR(`/api/orders?restaurantId=${restaurantId}`, fetcher, {
     fallbackData: { orders: initialOrders, items: {} },
-    refreshInterval: 5000,
+    refreshInterval: 30000, // Poll every 30 seconds as fallback (SSE handles real-time updates)
+    refreshWhenHidden: false, // Don't poll when tab is hidden to save resources
+    refreshWhenOffline: false, // Don't poll when offline
+    revalidateOnFocus: true, // Immediately check when user returns to tab
+    dedupingInterval: 5000, // Prevent duplicate requests within 5 seconds
   })
 
   const { data: archiveData, mutate: mutateArchive } = useSWR(
@@ -57,15 +64,102 @@ export function OrdersTab({ orders: initialOrders, restaurantId }: OrdersTabProp
 
   const [estimatedTimes, setEstimatedTimes] = useState<Record<number, string>>({})
 
-  async function handleComplete(orderId: number) {
-    await markOrderCompleted(orderId)
+  // Handle new order notifications from real-time SSE stream
+  const handleNewOrder = useCallback((order: StreamedOrder) => {
+    console.log('[v0] Real-time order received:', order.order_number)
+    
+    // Mark order as new for highlighting
+    setNewOrderIds(prev => new Set([...prev, order.id]))
+    
+    // Play notification sound
+    try {
+      const audio = new Audio("/notification.mp3")
+      audio.volume = 0.5
+      audio.play().catch(() => {
+        // Silently fail if audio can't play (user interaction required)
+      })
+    } catch (error) {
+      // Ignore audio errors
+    }
+    
+    // Show toast notification with order details
+    toast.success(
+      `Neue Bestellung eingetroffen!\n${order.order_number} - ${order.customer_name}`,
+      {
+        duration: 8000,
+        action: {
+          label: 'Anzeigen',
+          onClick: () => {
+            // Scroll to the new order
+            const orderElement = document.querySelector(`[data-order-id="${order.id}"]`)
+            orderElement?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+          }
+        }
+      }
+    )
+    
+    // Trigger immediate data refresh to fetch full order details
     mutateActive()
+    
+    // Remove highlighting after 15 seconds
+    setTimeout(() => {
+      setNewOrderIds(prev => {
+        const newSet = new Set(prev)
+        newSet.delete(order.id)
+        return newSet
+      })
+    }, 15000)
+  }, [mutateActive])
+
+  // Connect to real-time order stream (SSE) - only when viewing active orders
+  const { isConnected: isStreamConnected } = useOrderStream({
+    restaurantId,
+    onNewOrder: handleNewOrder,
+    enabled: viewMode === "active"
+  })
+
+  async function handleComplete(orderId: number) {
+    // Optimistic UI update - immediately remove from active orders
+    mutateActive(
+      async () => {
+        await markOrderCompleted(orderId)
+        return fetch(`/api/orders?restaurantId=${restaurantId}`).then(r => r.json())
+      },
+      {
+        optimisticData: {
+          orders: activeOrders.filter(o => o.id !== orderId),
+          items: activeItems
+        },
+        rollbackOnError: true,
+        revalidate: true
+      }
+    )
     mutateArchive()
   }
 
   async function handleStatusChange(orderId: number, status: string) {
-    await updateOrderStatus(orderId, status)
-    mutate()
+    // Optimistic UI update - immediately update status in UI
+    const optimisticOrders = orders.map(o => 
+      o.id === orderId ? { ...o, status } : o
+    )
+    
+    mutate(
+      async () => {
+        await updateOrderStatus(orderId, status)
+        const endpoint = viewMode === "active" 
+          ? `/api/orders?restaurantId=${restaurantId}`
+          : `/api/orders/archive?restaurantId=${restaurantId}`
+        return fetch(endpoint).then(r => r.json())
+      },
+      {
+        optimisticData: {
+          orders: optimisticOrders,
+          items: orderItems
+        },
+        rollbackOnError: true,
+        revalidate: true
+      }
+    )
   }
 
   async function handleSetTime(orderId: number) {
@@ -403,7 +497,14 @@ export function OrdersTab({ orders: initialOrders, restaurantId }: OrdersTabProp
             <TabsList>
               <TabsTrigger value="active" className="flex items-center gap-2">
                 <Clock className="h-4 w-4" />
-                Aktiv
+                Aktiv ({activeOrders.length})
+                {viewMode === "active" && (
+                  isStreamConnected ? (
+                    <Wifi className="h-3 w-3 text-green-500 ml-1" title="Echtzeit-Updates aktiv" />
+                  ) : (
+                    <WifiOff className="h-3 w-3 text-orange-500 ml-1" title="Keine Echtzeit-Verbindung" />
+                  )
+                )}
               </TabsTrigger>
               <TabsTrigger value="archive" className="flex items-center gap-2">
                 <Archive className="h-4 w-4" />
@@ -444,9 +545,16 @@ export function OrdersTab({ orders: initialOrders, restaurantId }: OrdersTabProp
             const isArchived = viewMode === "archive"
             const isCancelled = order.status === "cancelled" || order.is_cancelled
             return (
-              <Card 
-                key={order.id} 
-                className={`overflow-hidden ${isArchived ? "opacity-75" : ""} ${isCancelled ? "border-red-500 dark:border-red-700 border-2" : ""}`}
+              <Card
+                key={order.id}
+                data-order-id={order.id}
+                className={`${
+                  order.order_type === "delivery"
+                    ? "border-l-4 border-l-blue-500"
+                    : order.order_type === "pickup"
+                      ? "border-l-4 border-l-green-500"
+                      : "border-l-4 border-l-purple-500"
+                } ${newOrderIds.has(order.id) ? "animate-pulse ring-2 ring-yellow-400 shadow-lg" : ""} transition-all duration-300`}
               >
                 <CardHeader className="pb-3">
                   <div className="flex items-center justify-between flex-wrap gap-2">
@@ -591,10 +699,7 @@ export function OrdersTab({ orders: initialOrders, restaurantId }: OrdersTabProp
                         <Button 
                           variant="outline" 
                           className="w-full justify-start"
-                          onClick={() => {
-                            handleStatusChange(order.id, "confirmed")
-                            printOrder(order, items)
-                          }}
+                          onClick={() => handleStatusChange(order.id, "confirmed")}
                           disabled={order.status !== "pending"}
                         >
                           <Printer className="mr-2 h-4 w-4" />

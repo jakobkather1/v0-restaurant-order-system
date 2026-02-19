@@ -13,24 +13,32 @@ import { redirect } from "next/navigation"
 import type { Restaurant } from "@/lib/types"
 
 export async function loginRestaurantAdmin(restaurantId: number, password: string, slug: string, isCustomDomain = false) {
+  console.log("[v0] loginRestaurantAdmin - Starting for restaurant:", restaurantId, "slug:", slug)
+  
   const result = await sql`SELECT admin_password_hash FROM restaurants WHERE id = ${restaurantId}`
   const restaurant = result[0]
 
   if (!restaurant?.admin_password_hash) {
+    console.log("[v0] loginRestaurantAdmin - No password hash found")
     return { error: "Kein Passwort gesetzt" }
   }
 
+  console.log("[v0] loginRestaurantAdmin - Verifying password...")
   const isValid = await verifyPassword(password, restaurant.admin_password_hash)
   
   if (!isValid) {
+    console.log("[v0] loginRestaurantAdmin - Invalid password")
     return { error: "Ungültiges Passwort" }
   }
 
+  console.log("[v0] loginRestaurantAdmin - Password valid, setting session...")
   await setRestaurantAdminSession(restaurantId)
+  console.log("[v0] loginRestaurantAdmin - Session set, returning success with redirect URL")
   
-  // Redirect nach Login, damit Session sofort erkannt wird
+  // Return success with redirect URL instead of calling redirect() directly
+  // This allows the client component to handle the redirect after the cookie is set
   const dashboardPath = isCustomDomain ? "/admin/dashboard" : `/${slug}/admin/dashboard`
-  redirect(dashboardPath)
+  return { success: true, redirectUrl: dashboardPath }
 }
 
 export async function logoutRestaurantAdmin(slug: string, isCustomDomain = false) {

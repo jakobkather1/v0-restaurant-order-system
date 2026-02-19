@@ -3,6 +3,7 @@
 import React from "react"
 
 import { useState, useCallback } from "react"
+import { usePathname } from "next/navigation"
 import { CookieBanner, CookieSettingsButton } from "./cookie-banner"
 
 interface CookieCategory {
@@ -34,16 +35,22 @@ interface CookieProviderProps {
 }
 
 export function CookieProvider({ settings, categories, children }: CookieProviderProps) {
+  const pathname = usePathname()
   const [showBanner, setShowBanner] = useState(false)
 
   const openCookieSettings = useCallback(() => {
-    // Clear consent cookie to show banner again
-    document.cookie = "cookie_consent=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;"
+    // Clear consent from localStorage to show banner again
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('cookie-consent')
+    }
     setShowBanner(true)
     window.location.reload()
   }, [])
 
-  if (!settings || !settings.is_active) {
+  // Hide banner on admin routes
+  const isAdminRoute = pathname?.includes('/admin') || pathname?.includes('/super-admin')
+  
+  if (!settings || !settings.is_active || isAdminRoute) {
     return <>{children}</>
   }
 

@@ -221,16 +221,21 @@ export async function getRestaurantAdminSession() {
 
 export async function setRestaurantAdminSession(restaurantId: number) {
   try {
+    console.log("[v0] setRestaurantAdminSession - Setting session for restaurant:", restaurantId)
     const cookieStore = await cookies()
-    cookieStore.set("restaurant_admin_session", JSON.stringify({ restaurantId }), {
+    const sessionData = JSON.stringify({ restaurantId })
+    
+    cookieStore.set("restaurant_admin_session", sessionData, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
+      sameSite: "lax", // "lax" allows cookie to be sent on same-site redirects (required for server-side redirect after login)
       maxAge: 60 * 60 * 24, // 24 hours
       path: "/",
     })
+    
+    console.log("[v0] setRestaurantAdminSession - Session cookie set successfully")
   } catch (error) {
-    console.error("Error setting restaurant admin session:", error)
+    console.error("[v0] setRestaurantAdminSession - Error:", error)
   }
 }
 
