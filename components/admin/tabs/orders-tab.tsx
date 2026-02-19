@@ -591,10 +591,7 @@ export function OrdersTab({ orders: initialOrders, restaurantId }: OrdersTabProp
                         <Button 
                           variant="outline" 
                           className="w-full justify-start"
-                          onClick={() => {
-                            handleStatusChange(order.id, "confirmed")
-                            printOrder(order, items)
-                          }}
+                          onClick={() => handleStatusChange(order.id, "confirmed")}
                           disabled={order.status !== "pending"}
                         >
                           <Printer className="mr-2 h-4 w-4" />
