@@ -1,17 +1,12 @@
 import type React from "react"
 import type { Metadata, Viewport } from "next"
-import dynamic from "next/dynamic"
 import { Geist, Geist_Mono } from "next/font/google"
 import { Toaster } from "@/components/ui/sonner"
 import { ServiceWorkerProvider } from "@/components/service-worker-provider"
 import { AnalyticsManager } from "@/components/analytics-manager"
+import { CookieProvider } from "@/components/cookie-provider"
 import { getCookieSettings, getCookieCategories } from "@/lib/cookie-settings"
 import "./globals.css"
-
-// Dynamically load cookie provider to prevent HMR issues with Switch component
-const CookieProvider = dynamic(() => import("@/components/cookie-provider").then(mod => ({ default: mod.CookieProvider })), {
-  ssr: true,
-})
 
 const geistSans = Geist({ 
   subsets: ["latin"],
