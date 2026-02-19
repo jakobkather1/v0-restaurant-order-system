@@ -40,7 +40,15 @@ export default async function AdminLoginPage({ params }: { params: Promise<{ slu
   }
 
   const session = await getRestaurantAdminSession()
+  console.log("[v0] Admin page - Session check:", { 
+    hasSession: !!session, 
+    sessionRestaurantId: session?.restaurantId,
+    restaurantId: restaurant.id,
+    matches: session?.restaurantId === restaurant.id 
+  })
+  
   if (session?.restaurantId === restaurant.id) {
+    console.log("[v0] Admin page - Redirecting to dashboard")
     redirect(`/${slug}/admin/dashboard`)
   }
 
