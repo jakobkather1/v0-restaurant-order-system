@@ -16,7 +16,6 @@ const sql = neon(process.env.DATABASE_URL!, {
   fetchOptions: {
     cache: 'no-store', // Disable fetch cache for fresh data
   },
-  fullResults: false, // Only return rows, not metadata
 })
 
 // Lazy-loaded connection pool - only initialized when needed
