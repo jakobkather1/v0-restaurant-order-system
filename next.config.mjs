@@ -10,6 +10,7 @@ const nextConfig = {
     deviceSizes: [640, 750, 828, 1080, 1200, 1920],
     imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
     minimumCacheTTL: 31536000, // 1 year
+    qualities: [75, 80, 90], // Support multiple image qualities used in the app
   },
   compress: true, // Enable gzip/brotli compression
   poweredByHeader: false, // Remove X-Powered-By header
