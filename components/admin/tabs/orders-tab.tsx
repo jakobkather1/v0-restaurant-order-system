@@ -4,14 +4,15 @@ import { markOrderCompleted, updateOrderStatus, setOrderEstimatedTime } from "@/
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Check, Clock, Phone, MapPin, Printer, RefreshCw, Timer, Truck, Store, Archive, Ban } from "lucide-react"
+import { Check, Clock, Phone, MapPin, Printer, RefreshCw, Timer, Truck, Store, Archive, Ban, Wifi, WifiOff } from "lucide-react"
 import type { Order, OrderItem } from "@/lib/types"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { CancelOrderDialog } from "@/components/admin/cancel-order-dialog"
 import { useSunmiPrint } from "@/hooks/use-sunmi-print"
+import { useOrderStream, type StreamedOrder } from "@/hooks/use-order-stream"
 import { toast } from "sonner"
 
 interface OrdersTabProps {
@@ -37,11 +38,11 @@ export function OrdersTab({ orders: initialOrders, restaurantId }: OrdersTabProp
 
   const { data: activeData, mutate: mutateActive } = useSWR(`/api/orders?restaurantId=${restaurantId}`, fetcher, {
     fallbackData: { orders: initialOrders, items: {} },
-    refreshInterval: 2000, // Poll every 2 seconds for near real-time updates
+    refreshInterval: 30000, // Poll every 30 seconds as fallback (SSE handles real-time updates)
     refreshWhenHidden: false, // Don't poll when tab is hidden to save resources
     refreshWhenOffline: false, // Don't poll when offline
     revalidateOnFocus: true, // Immediately check when user returns to tab
-    dedupingInterval: 1000, // Prevent duplicate requests within 1 second
+    dedupingInterval: 5000, // Prevent duplicate requests within 5 seconds
   })
 
   const { data: archiveData, mutate: mutateArchive } = useSWR(
@@ -63,51 +64,59 @@ export function OrdersTab({ orders: initialOrders, restaurantId }: OrdersTabProp
 
   const [estimatedTimes, setEstimatedTimes] = useState<Record<number, string>>({})
 
-  // Detect new orders and play notification sound
-  useEffect(() => {
-    if (viewMode !== "active" || !activeOrders.length) return
+  // Handle new order notifications from real-time SSE stream
+  const handleNewOrder = useCallback((order: StreamedOrder) => {
+    console.log('[v0] Real-time order received:', order.order_number)
     
-    const currentCount = activeOrders.length
-    const currentIds = new Set(activeOrders.map((o) => o.id))
+    // Mark order as new for highlighting
+    setNewOrderIds(prev => new Set([...prev, order.id]))
     
-    // Check if there are new orders (count increased)
-    if (currentCount > previousOrderCount) {
-      // Find which orders are new
-      const newOrders = activeOrders.filter((order) => {
-        // New if it's a pending order and we haven't seen it before
-        return order.status === "pending" && !previousOrderCount
+    // Play notification sound
+    try {
+      const audio = new Audio("/notification.mp3")
+      audio.volume = 0.5
+      audio.play().catch(() => {
+        // Silently fail if audio can't play (user interaction required)
       })
-      
-      if (newOrders.length > 0) {
-        // Mark new orders for highlighting
-        const newIds = new Set(newOrders.map((o) => o.id))
-        setNewOrderIds(newIds)
-        
-        // Play notification sound
-        try {
-          const audio = new Audio("/notification.mp3")
-          audio.volume = 0.5
-          audio.play().catch(() => {
-            // Silently fail if audio can't play (user interaction required)
-          })
-        } catch (error) {
-          // Ignore audio errors
-        }
-        
-        // Show toast notification
-        toast.success(`${newOrders.length} neue Bestellung${newOrders.length > 1 ? "en" : ""} eingetroffen!`, {
-          duration: 5000,
-        })
-        
-        // Remove highlighting after 10 seconds
-        setTimeout(() => {
-          setNewOrderIds(new Set())
-        }, 10000)
-      }
+    } catch (error) {
+      // Ignore audio errors
     }
     
-    setPreviousOrderCount(currentCount)
-  }, [activeOrders, previousOrderCount, viewMode])
+    // Show toast notification with order details
+    toast.success(
+      `Neue Bestellung eingetroffen!\n${order.order_number} - ${order.customer_name}`,
+      {
+        duration: 8000,
+        action: {
+          label: 'Anzeigen',
+          onClick: () => {
+            // Scroll to the new order
+            const orderElement = document.querySelector(`[data-order-id="${order.id}"]`)
+            orderElement?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+          }
+        }
+      }
+    )
+    
+    // Trigger immediate data refresh to fetch full order details
+    mutateActive()
+    
+    // Remove highlighting after 15 seconds
+    setTimeout(() => {
+      setNewOrderIds(prev => {
+        const newSet = new Set(prev)
+        newSet.delete(order.id)
+        return newSet
+      })
+    }, 15000)
+  }, [mutateActive])
+
+  // Connect to real-time order stream (SSE) - only when viewing active orders
+  const { isConnected: isStreamConnected } = useOrderStream({
+    restaurantId,
+    onNewOrder: handleNewOrder,
+    enabled: viewMode === "active"
+  })
 
   async function handleComplete(orderId: number) {
     // Optimistic UI update - immediately remove from active orders
@@ -488,7 +497,14 @@ export function OrdersTab({ orders: initialOrders, restaurantId }: OrdersTabProp
             <TabsList>
               <TabsTrigger value="active" className="flex items-center gap-2">
                 <Clock className="h-4 w-4" />
-                Aktiv
+                Aktiv ({activeOrders.length})
+                {viewMode === "active" && (
+                  isStreamConnected ? (
+                    <Wifi className="h-3 w-3 text-green-500 ml-1" title="Echtzeit-Updates aktiv" />
+                  ) : (
+                    <WifiOff className="h-3 w-3 text-orange-500 ml-1" title="Keine Echtzeit-Verbindung" />
+                  )
+                )}
               </TabsTrigger>
               <TabsTrigger value="archive" className="flex items-center gap-2">
                 <Archive className="h-4 w-4" />
@@ -531,13 +547,14 @@ export function OrdersTab({ orders: initialOrders, restaurantId }: OrdersTabProp
             return (
               <Card
                 key={order.id}
+                data-order-id={order.id}
                 className={`${
                   order.order_type === "delivery"
                     ? "border-l-4 border-l-blue-500"
                     : order.order_type === "pickup"
                       ? "border-l-4 border-l-green-500"
                       : "border-l-4 border-l-purple-500"
-                } ${newOrderIds.has(order.id) ? "animate-pulse ring-2 ring-yellow-400 shadow-lg" : ""}`}
+                } ${newOrderIds.has(order.id) ? "animate-pulse ring-2 ring-yellow-400 shadow-lg" : ""} transition-all duration-300`}
               >
                 <CardHeader className="pb-3">
                   <div className="flex items-center justify-between flex-wrap gap-2">
