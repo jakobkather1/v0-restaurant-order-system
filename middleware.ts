@@ -5,7 +5,7 @@ import type { NextRequest } from "next/server"
 const PLATFORM_DOMAIN = process.env.NEXT_PUBLIC_APP_DOMAIN || "order-terminal.de"
 
 // Vercel Deployment Domains (Previews sollten auch die Plattform sein)
-const VERCEL_DEPLOYMENT_DOMAINS = [".vercel.app", ".vercel.dev", ".vusercontent.net"]
+const VERCEL_DEPLOYMENT_DOMAINS = [".vercel.app", ".vercel.dev", ".vusercontent.net", ".vercel.run"]
 
 // Reserved paths that must always go to the main app (except /admin - that's restaurant-specific)
 const RESERVED_PATHS = [
