@@ -48,17 +48,13 @@ export function middleware(request: NextRequest) {
   // Check if this is localhost (development)
   const isLocalhost = hostWithoutPort.startsWith("localhost")
 
-  // If it's the main platform or localhost, pass through normally
-  if (isPlatformDomain || isLocalhost) {
-    return NextResponse.next()
-  }
-  
-  // Vercel domains (preview/production) - pass through for platform
-  if (isVercelDomain) {
+  // If it's the main platform, localhost, or Vercel deployment domain, pass through normally
+  // These should all use slug-based routing (/doctordoener, /bella-marina, etc.)
+  if (isPlatformDomain || isLocalhost || isVercelDomain) {
     return NextResponse.next()
   }
 
-  // Custom domain detected - rewrite to tenant system
+  // Only non-Vercel custom domains get rewritten to tenant system
   // Clean the domain (remove www., normalize)
   const cleanDomain = hostWithoutPort.replace(/^www\./, "")
 
