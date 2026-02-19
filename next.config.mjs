@@ -3,8 +3,10 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
-  // Prevent database packages from being bundled in client
-  serverComponentsExternalPackages: ['@neondatabase/serverless', 'pg'],
+  experimental: {
+    // Prevent database packages from being bundled in client
+    serverComponentsExternalPackages: ['@neondatabase/serverless', 'pg'],
+  },
   images: {
     formats: ['image/webp', 'image/avif'],
     deviceSizes: [640, 750, 828, 1080, 1200, 1920],

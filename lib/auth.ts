@@ -212,7 +212,7 @@ export async function getRestaurantAdminSession() {
     const cookieStore = await cookies()
     const session = cookieStore.get("restaurant_admin_session")
     if (!session?.value) return null
-
+    
     return JSON.parse(session.value) as { restaurantId: number }
   } catch {
     return null

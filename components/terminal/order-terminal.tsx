@@ -326,7 +326,12 @@ export function OrderTerminal({
     }
   }
 
-  const cartTotal = cart.reduce((sum, item) => sum + item.totalPrice * item.quantity, 0)
+  // Calculate cart total in cents to avoid floating-point precision errors
+  const cartTotalCents = cart.reduce((sum, item) => {
+    const priceCents = Math.round(item.totalPrice * 100)
+    return sum + priceCents * item.quantity
+  }, 0)
+  const cartTotal = cartTotalCents / 100
   const cartItemCount = cart.reduce((sum, item) => sum + item.quantity, 0)
   const totalItems = cartItemCount
 

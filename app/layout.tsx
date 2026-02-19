@@ -2,18 +2,19 @@ import type React from "react"
 import type { Metadata, Viewport } from "next"
 import { Geist, Geist_Mono } from "next/font/google"
 import { Toaster } from "@/components/ui/sonner"
-import { CookieProvider } from "@/components/cookie-provider"
-import { AnalyticsManager } from "@/components/analytics-manager"
 import { ServiceWorkerProvider } from "@/components/service-worker-provider"
+import { AnalyticsManager } from "@/components/analytics-manager"
+import { ClientCookieWrapper } from "@/components/client-cookie-wrapper"
 import { getCookieSettings, getCookieCategories } from "@/lib/cookie-settings"
 import "./globals.css"
 
-const _geist = Geist({ 
+const geistSans = Geist({ 
   subsets: ["latin"],
   display: 'swap',
   preload: true,
 })
-const _geistMono = Geist_Mono({ 
+
+const geistMono = Geist_Mono({ 
   subsets: ["latin"],
   display: 'swap',
   preload: true,
@@ -48,10 +49,10 @@ export default async function RootLayout({
       </head>
       <body className={`font-sans antialiased w-screen max-w-full`}>
         <ServiceWorkerProvider />
-        <CookieProvider settings={settings} categories={categories}>
+        <ClientCookieWrapper settings={settings} categories={categories}>
           <AnalyticsManager />
           {children}
-        </CookieProvider>
+        </ClientCookieWrapper>
         <Toaster position="top-center" richColors />
       </body>
     </html>

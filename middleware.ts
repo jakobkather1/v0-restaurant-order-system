@@ -5,7 +5,7 @@ import type { NextRequest } from "next/server"
 const PLATFORM_DOMAIN = process.env.NEXT_PUBLIC_APP_DOMAIN || "order-terminal.de"
 
 // Vercel Deployment Domains (Previews sollten auch die Plattform sein)
-const VERCEL_DEPLOYMENT_DOMAINS = [".vercel.app", ".vercel.dev", ".vusercontent.net"]
+const VERCEL_DEPLOYMENT_DOMAINS = [".vercel.app", ".vercel.dev", ".vusercontent.net", ".vercel.run"]
 
 // Reserved paths that must always go to the main app (except /admin - that's restaurant-specific)
 const RESERVED_PATHS = [
@@ -42,23 +42,19 @@ export function middleware(request: NextRequest) {
 
   // Check if this is a Vercel deployment (include it in platform)
   const isVercelDomain = VERCEL_DEPLOYMENT_DOMAINS.some((domain) =>
-    hostWithoutPort.includes(domain)
+    hostWithoutPort.endsWith(domain)
   )
 
   // Check if this is localhost (development)
   const isLocalhost = hostWithoutPort.startsWith("localhost")
 
-  // If it's the main platform or localhost, pass through normally
-  if (isPlatformDomain || isLocalhost) {
-    return NextResponse.next()
-  }
-  
-  // Vercel domains (preview/production) - pass through for platform
-  if (isVercelDomain) {
+  // If it's the main platform, localhost, or Vercel deployment domain, pass through normally
+  // These should all use slug-based routing (/doctordoener, /bella-marina, etc.)
+  if (isPlatformDomain || isLocalhost || isVercelDomain) {
     return NextResponse.next()
   }
 
-  // Custom domain detected - rewrite to tenant system
+  // Only non-Vercel custom domains get rewritten to tenant system
   // Clean the domain (remove www., normalize)
   const cleanDomain = hostWithoutPort.replace(/^www\./, "")
 
@@ -77,7 +73,8 @@ export function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    // Match all paths except static files and images
-    "/((?!_next/static|_next/image|public|favicon\\.ico).*)",
+    // Match all paths except Next.js internals, static files, and common asset extensions
+    // Note: Files in /public are served from root (e.g., /logo.png not /public/logo.png)
+    "/((?!_next/static|_next/image|favicon\\.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|woff|woff2|ttf|eot)).*)",
   ],
 }
