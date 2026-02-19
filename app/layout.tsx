@@ -4,7 +4,7 @@ import { Geist, Geist_Mono } from "next/font/google"
 import { Toaster } from "@/components/ui/sonner"
 import { ServiceWorkerProvider } from "@/components/service-worker-provider"
 import { AnalyticsManager } from "@/components/analytics-manager"
-import { CookieProvider } from "@/components/cookie-provider"
+import { ClientCookieWrapper } from "@/components/client-cookie-wrapper"
 import { getCookieSettings, getCookieCategories } from "@/lib/cookie-settings"
 import "./globals.css"
 
@@ -49,10 +49,10 @@ export default async function RootLayout({
       </head>
       <body className={`font-sans antialiased w-screen max-w-full`}>
         <ServiceWorkerProvider />
-        <CookieProvider settings={settings} categories={categories}>
+        <ClientCookieWrapper settings={settings} categories={categories}>
           <AnalyticsManager />
           {children}
-        </CookieProvider>
+        </ClientCookieWrapper>
         <Toaster position="top-center" richColors />
       </body>
     </html>
