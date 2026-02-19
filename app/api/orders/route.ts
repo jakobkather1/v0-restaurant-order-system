@@ -15,10 +15,20 @@ export async function GET(request: NextRequest) {
       ? await getArchivedOrders(Number.parseInt(restaurantId))
       : await getActiveOrders(Number.parseInt(restaurantId))
 
-    // Get items for all orders
+    // Get items for all orders in a single batch query (fixes N+1 problem)
+    const orderIds = orders.map(o => o.id)
     const items: Record<number, Awaited<ReturnType<typeof getOrderItems>>> = {}
-    for (const order of orders) {
-      items[order.id] = await getOrderItems(order.id)
+    
+    if (orderIds.length > 0) {
+      // Fetch all items in parallel instead of sequentially
+      const itemsArray = await Promise.all(
+        orderIds.map(orderId => getOrderItems(orderId))
+      )
+      
+      // Map results to order IDs
+      orderIds.forEach((orderId, index) => {
+        items[orderId] = itemsArray[index]
+      })
     }
 
     return NextResponse.json({ orders, items })

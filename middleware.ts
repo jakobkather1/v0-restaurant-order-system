@@ -73,7 +73,8 @@ export function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    // Match all paths except static files and images
-    "/((?!_next/static|_next/image|public|favicon\\.ico).*)",
+    // Match all paths except Next.js internals, static files, and common asset extensions
+    // Note: Files in /public are served from root (e.g., /logo.png not /public/logo.png)
+    "/((?!_next/static|_next/image|favicon\\.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|woff|woff2|ttf|eot)).*)",
   ],
 }

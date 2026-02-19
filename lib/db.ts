@@ -34,9 +34,6 @@ export function getPool(): Pool {
   return _pool
 }
 
-// Deprecated: Use getPool() instead for better performance
-export const pool = new Pool({ connectionString: process.env.DATABASE_URL! })
-
 export { sql }
 
 function isTransientError(error: unknown): boolean {
@@ -203,42 +200,42 @@ export async function getAllRestaurants() {
 export async function getMenuForRestaurant(restaurantId: number) {
   return withRetry(
     async () => {
-      const categories = await sql`
-        SELECT * FROM categories 
-        WHERE restaurant_id = ${restaurantId} 
-        ORDER BY id
-      `
-
-      const menuItems = await sql`
-        SELECT * FROM menu_items 
-        WHERE restaurant_id = ${restaurantId} AND is_available = true
-        ORDER BY id
-      `
-
-      const itemVariants = await sql`
-        SELECT iv.* FROM item_variants iv
-        JOIN menu_items mi ON iv.menu_item_id = mi.id
-        WHERE mi.restaurant_id = ${restaurantId}
-        ORDER BY iv.sort_order
-      `
-
-      let categoryVariants: Array<{
-        id: number
-        category_id: number
-        name: string
-        price_modifier: number
-        sort_order: number
-      }> = []
-      try {
-        categoryVariants = await sql`
+      // Parallelize independent queries to reduce latency (fixes sequential query bottleneck)
+      const [categories, menuItems, itemVariants, categoryVariants, toppings] = await Promise.all([
+        sql`
+          SELECT * FROM categories 
+          WHERE restaurant_id = ${restaurantId} 
+          ORDER BY id
+        `,
+        sql`
+          SELECT * FROM menu_items 
+          WHERE restaurant_id = ${restaurantId} AND is_available = true
+          ORDER BY id
+        `,
+        sql`
+          SELECT iv.* FROM item_variants iv
+          JOIN menu_items mi ON iv.menu_item_id = mi.id
+          WHERE mi.restaurant_id = ${restaurantId}
+          ORDER BY iv.sort_order
+        `,
+        sql`
           SELECT cv.* FROM category_variants cv
           JOIN categories c ON cv.category_id = c.id
           WHERE c.restaurant_id = ${restaurantId}
           ORDER BY cv.sort_order
+        `.catch(() => [] as Array<{
+          id: number
+          category_id: number
+          name: string
+          price_modifier: number
+          sort_order: number
+        }>),
+        sql`
+          SELECT * FROM toppings 
+          WHERE restaurant_id = ${restaurantId} AND is_available = true
+          ORDER BY name
         `
-      } catch {
-        // Table may not exist yet
-      }
+      ])
 
       const combinedVariants: Array<{
         id: number
@@ -264,36 +261,78 @@ export async function getMenuForRestaurant(restaurantId: number) {
         }
       }
 
-      const toppings = await sql`
-        SELECT * FROM toppings 
-        WHERE restaurant_id = ${restaurantId} AND is_available = true
-        ORDER BY name
-      `
-
       const toppingIds = toppings.map((t: { id: number }) => t.id)
+      
+      // Parallelize topping-related queries
       let toppingPriceVariants: Array<{ topping_id: number; variant_name: string; price: number }> = []
       let toppingCategories: Array<{ topping_id: number; category_id: number }> = []
+      let allergens: Array<{ id: number; code: string; name: string; type: string }> = []
+      let dishAllergens: Array<{ menu_item_id: number; allergen_id: number }> = []
       
       if (toppingIds.length > 0) {
-        try {
-          toppingPriceVariants = await sql`
+        const menuItemIds = menuItems.map((m: { id: number }) => m.id)
+        
+        // Parallelize all remaining queries
+        const [toppingPriceVariantsResult, toppingCategoriesResult, allergensResult, dishAllergensResult] = await Promise.all([
+          sql`
             SELECT * FROM topping_price_variants 
             WHERE topping_id = ANY(${toppingIds})
-          `
-        } catch (error) {
-          console.log("[v0] topping_price_variants table not available:", error)
-          // Table may not exist yet
-        }
-        
-        try {
-          toppingCategories = await sql`
+          `.catch((error) => {
+            console.error("[v0] Error loading topping_price_variants:", error.message)
+            return [] as Array<{ topping_id: number; variant_name: string; price: number }>
+          }),
+          sql`
             SELECT * FROM topping_categories 
             WHERE topping_id = ANY(${toppingIds})
-          `
-        } catch (error) {
-          console.log("[v0] topping_categories table not available:", error)
-          // Table may not exist yet
-        }
+          `.catch((error) => {
+            console.error("[v0] Error loading topping_categories:", error.message)
+            return [] as Array<{ topping_id: number; category_id: number }>
+          }),
+          sql`
+            SELECT * FROM allergens 
+            WHERE restaurant_id = ${restaurantId}
+            ORDER BY code
+          `.catch((error) => {
+            console.error("[v0] Error loading allergens:", error.message)
+            return [] as Array<{ id: number; code: string; name: string; type: string }>
+          }),
+          menuItemIds.length > 0 ? sql`
+            SELECT * FROM dish_allergens 
+            WHERE menu_item_id = ANY(${menuItemIds})
+          `.catch((error) => {
+            console.error("[v0] Error loading dish_allergens:", error.message)
+            return [] as Array<{ menu_item_id: number; allergen_id: number }>
+          }) : Promise.resolve([] as Array<{ menu_item_id: number; allergen_id: number }>)
+        ])
+        
+        toppingPriceVariants = toppingPriceVariantsResult
+        toppingCategories = toppingCategoriesResult
+        allergens = allergensResult
+        dishAllergens = dishAllergensResult
+      } else {
+        // No toppings, still load allergens in parallel
+        const menuItemIds = menuItems.map((m: { id: number }) => m.id)
+        
+        const [allergensResult, dishAllergensResult] = await Promise.all([
+          sql`
+            SELECT * FROM allergens 
+            WHERE restaurant_id = ${restaurantId}
+            ORDER BY code
+          `.catch((error) => {
+            console.error("[v0] Error loading allergens:", error.message)
+            return [] as Array<{ id: number; code: string; name: string; type: string }>
+          }),
+          menuItemIds.length > 0 ? sql`
+            SELECT * FROM dish_allergens 
+            WHERE menu_item_id = ANY(${menuItemIds})
+          `.catch((error) => {
+            console.error("[v0] Error loading dish_allergens:", error.message)
+            return [] as Array<{ menu_item_id: number; allergen_id: number }>
+          }) : Promise.resolve([] as Array<{ menu_item_id: number; allergen_id: number }>)
+        ])
+        
+        allergens = allergensResult
+        dishAllergens = dishAllergensResult
       }
 
       const toppingsWithVariants = toppings.map((topping: { id: number }) => ({
@@ -303,27 +342,6 @@ export async function getMenuForRestaurant(restaurantId: number) {
           .filter((tc) => tc.topping_id === topping.id)
           .map((tc) => tc.category_id),
       }))
-
-      let allergens: Array<{ id: number; code: string; name: string; type: string }> = []
-      let dishAllergens: Array<{ menu_item_id: number; allergen_id: number }> = []
-
-      try {
-        allergens = await sql`
-          SELECT * FROM allergens 
-          WHERE restaurant_id = ${restaurantId}
-          ORDER BY code
-        `
-
-        const menuItemIds = menuItems.map((m: { id: number }) => m.id)
-        if (menuItemIds.length > 0) {
-          dishAllergens = await sql`
-            SELECT * FROM dish_allergens 
-            WHERE menu_item_id = ANY(${menuItemIds})
-          `
-        }
-      } catch {
-        // Tables may not exist yet
-      }
 
       return {
         categories,
