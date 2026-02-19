@@ -13,12 +13,13 @@ const CookieProvider = dynamic(() => import("@/components/cookie-provider").then
   ssr: true,
 })
 
-const _geist = Geist({ 
+const geistSans = Geist({ 
   subsets: ["latin"],
   display: 'swap',
   preload: true,
 })
-const _geistMono = Geist_Mono({ 
+
+const geistMono = Geist_Mono({ 
   subsets: ["latin"],
   display: 'swap',
   preload: true,
