@@ -1,14 +1,6 @@
 "use client"
-import useSWR from "swr"
-import { markOrderCompleted, updateOrderStatus, setOrderEstimatedTime } from "@/app/[slug]/admin/actions"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Check, Clock, Phone, MapPin, Printer, RefreshCw, Timer, Truck, Store, Archive, Ban, Wifi, WifiOff } from "lucide-react"
-import type { Order, OrderItem } from "@/lib/types"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Input } from "@/components/ui/input"
-import { useState, useEffect, useCallback } from "react"
+
+import { useState, useEffect, useCallback, useRef } from "react"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { CancelOrderDialog } from "@/components/admin/cancel-order-dialog"
 import { useSunmiPrint } from "@/hooks/use-sunmi-print"
@@ -29,7 +21,7 @@ export function OrdersTab({ orders: initialOrders, restaurantId }: OrdersTabProp
   const [previousOrderCount, setPreviousOrderCount] = useState(initialOrders.length)
   const [newOrderIds, setNewOrderIds] = useState<Set<number>>(new Set())
   const [completingOrderId, setCompletingOrderId] = useState<number | null>(null)
-  const [previousOrderIds, setPreviousOrderIds] = useState<Set<number>>(new Set(initialOrders.map(o => o.id)))
+  const previousOrderIdsRef = useRef<Set<number>>(new Set(initialOrders.map(o => o.id)))
   
   // Sunmi Print Integration
   const { print: printToSunmi, isSunmiAvailable, checkSunmiService } = useSunmiPrint()
@@ -76,16 +68,19 @@ export function OrdersTab({ orders: initialOrders, restaurantId }: OrdersTabProp
     const currentOrderIds = new Set(activeOrders.map(o => o.id))
     
     // Find orders that are new (in current but not in previous)
-    const newOrders = activeOrders.filter(order => !previousOrderIds.has(order.id))
+    const newOrders = activeOrders.filter(order => !previousOrderIdsRef.current.has(order.id))
     
     if (newOrders.length > 0) {
       console.log('[v0] New orders detected via polling:', newOrders.length)
       
       newOrders.forEach(order => {
+        console.log('[v0] Processing new order:', order.order_number)
+        
         // Mark as new for highlighting
         setNewOrderIds(prev => new Set([...prev, order.id]))
         
         // Play notification sound
+        console.log('[v0] Calling playNotificationSound for order:', order.id)
         playNotificationSound()
         
         // Show toast
@@ -114,9 +109,9 @@ export function OrdersTab({ orders: initialOrders, restaurantId }: OrdersTabProp
       })
     }
     
-    // Update previous order IDs
-    setPreviousOrderIds(currentOrderIds)
-  }, [activeOrders, previousOrderIds, viewMode, playNotificationSound])
+    // Update previous order IDs in ref (doesn't trigger re-render)
+    previousOrderIdsRef.current = currentOrderIds
+  }, [activeOrders, viewMode, playNotificationSound])
 
   // Placeholder for UI indicator (no realtime connection in serverless)
   const isRealtimeConnected = false
