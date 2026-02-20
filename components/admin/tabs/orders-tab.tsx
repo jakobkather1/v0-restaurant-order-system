@@ -13,6 +13,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { CancelOrderDialog } from "@/components/admin/cancel-order-dialog"
 import { useSunmiPrint } from "@/hooks/use-sunmi-print"
 import { useOrderStream, type StreamedOrder } from "@/hooks/use-order-stream"
+import { useNotificationSound } from "@/hooks/use-notification-sound"
 import { toast } from "sonner"
 
 interface OrdersTabProps {
@@ -31,6 +32,9 @@ export function OrdersTab({ orders: initialOrders, restaurantId }: OrdersTabProp
   
   // Sunmi Print Integration
   const { print: printToSunmi, isSunmiAvailable, checkSunmiService } = useSunmiPrint()
+  
+  // Notification Sound Integration
+  const { playSound: playNotificationSound } = useNotificationSound()
   
   useEffect(() => {
     checkSunmiService()
@@ -71,16 +75,8 @@ export function OrdersTab({ orders: initialOrders, restaurantId }: OrdersTabProp
     // Mark order as new for highlighting
     setNewOrderIds(prev => new Set([...prev, order.id]))
     
-    // Play notification sound
-    try {
-      const audio = new Audio("/notification.mp3")
-      audio.volume = 0.5
-      audio.play().catch(() => {
-        // Silently fail if audio can't play (user interaction required)
-      })
-    } catch (error) {
-      // Ignore audio errors
-    }
+    // Play notification sound using the hook
+    playNotificationSound()
     
     // Show toast notification with order details
     toast.success(
