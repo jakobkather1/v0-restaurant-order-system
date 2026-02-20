@@ -12,7 +12,7 @@ import { useState, useEffect, useCallback } from "react"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { CancelOrderDialog } from "@/components/admin/cancel-order-dialog"
 import { useSunmiPrint } from "@/hooks/use-sunmi-print"
-import { useOrderStream, type StreamedOrder } from "@/hooks/use-order-stream"
+import { useRealtimeOrders } from "@/hooks/use-realtime-orders"
 import { useNotificationSound } from "@/hooks/use-notification-sound"
 import { toast } from "sonner"
 
@@ -43,11 +43,11 @@ export function OrdersTab({ orders: initialOrders, restaurantId }: OrdersTabProp
 
   const { data: activeData, mutate: mutateActive } = useSWR(`/api/orders?restaurantId=${restaurantId}`, fetcher, {
     fallbackData: { orders: initialOrders, items: {} },
-    refreshInterval: 5000, // Poll every 5 seconds (primary update mechanism since SSE may not work on all deployments)
+    refreshInterval: 30000, // Poll every 30 seconds as fallback only (PostgreSQL NOTIFY handles real-time updates)
     refreshWhenHidden: false, // Don't poll when tab is hidden to save resources
     refreshWhenOffline: false, // Don't poll when offline
     revalidateOnFocus: true, // Immediately check when user returns to tab
-    dedupingInterval: 2000, // Prevent duplicate requests within 2 seconds
+    dedupingInterval: 5000, // Prevent duplicate requests within 5 seconds
   })
 
   const { data: archiveData, mutate: mutateArchive } = useSWR(
@@ -69,26 +69,26 @@ export function OrdersTab({ orders: initialOrders, restaurantId }: OrdersTabProp
 
   const [estimatedTimes, setEstimatedTimes] = useState<Record<number, string>>({})
 
-  // Handle new order notifications from real-time SSE stream
-  const handleNewOrder = useCallback((order: StreamedOrder) => {
-    console.log('[v0] Real-time order received:', order.order_number)
+  // Handle new order notifications from real-time database triggers
+  const handleNewOrder = useCallback((notification: { order_id: number; order_number: string; customer_name: string; restaurant_id: number }) => {
+    console.log('[v0] Real-time order received via PostgreSQL NOTIFY:', notification.order_number)
     
     // Mark order as new for highlighting
-    setNewOrderIds(prev => new Set([...prev, order.id]))
+    setNewOrderIds(prev => new Set([...prev, notification.order_id]))
     
     // Play notification sound using the hook
     playNotificationSound()
     
     // Show toast notification with order details
     toast.success(
-      `Neue Bestellung eingetroffen!\n${order.order_number} - ${order.customer_name}`,
+      `Neue Bestellung eingetroffen!\n${notification.order_number} - ${notification.customer_name}`,
       {
         duration: 8000,
         action: {
           label: 'Anzeigen',
           onClick: () => {
             // Scroll to the new order
-            const orderElement = document.querySelector(`[data-order-id="${order.id}"]`)
+            const orderElement = document.querySelector(`[data-order-id="${notification.order_id}"]`)
             orderElement?.scrollIntoView({ behavior: 'smooth', block: 'center' })
           }
         }
@@ -97,32 +97,32 @@ export function OrdersTab({ orders: initialOrders, restaurantId }: OrdersTabProp
     
     // CRITICAL: Force immediate revalidation to fetch full order details
     // Using revalidate() ensures the UI updates without manual reload
-    console.log('[v0] Triggering immediate order refresh after SSE notification')
+    console.log('[v0] Triggering immediate order refresh after database notification')
     mutateActive(undefined, { revalidate: true })
     
     // Remove highlighting after 15 seconds
     setTimeout(() => {
       setNewOrderIds(prev => {
         const newSet = new Set(prev)
-        newSet.delete(order.id)
+        newSet.delete(notification.order_id)
         return newSet
       })
     }, 15000)
-  }, [mutateActive])
+  }, [mutateActive, playNotificationSound])
 
-  // Connect to real-time order stream (SSE) - only when viewing active orders
-  const { isConnected: isStreamConnected } = useOrderStream({
+  // Connect to real-time order notifications via PostgreSQL LISTEN/NOTIFY
+  const { isConnected: isRealtimeConnected } = useRealtimeOrders({
     restaurantId,
     onNewOrder: handleNewOrder,
     enabled: viewMode === "active"
   })
 
-  // Log SSE connection status for debugging
+  // Log realtime connection status for debugging
   useEffect(() => {
-    console.log(`[v0] SSE connection status: ${isStreamConnected ? 'CONNECTED' : 'DISCONNECTED'}`)
+    console.log(`[v0] PostgreSQL Realtime connection: ${isRealtimeConnected ? 'CONNECTED' : 'DISCONNECTED'}`)
     console.log(`[v0] View mode: ${viewMode}`)
     console.log(`[v0] Active orders count: ${activeOrders.length}`)
-  }, [isStreamConnected, viewMode, activeOrders.length])
+  }, [isRealtimeConnected, viewMode, activeOrders.length])
 
   async function handleComplete(orderId: number) {
     console.log('[v0] handleComplete - Starting for order:', orderId)
@@ -549,8 +549,8 @@ export function OrdersTab({ orders: initialOrders, restaurantId }: OrdersTabProp
                 <Clock className="h-3 w-3 sm:h-4 sm:w-4" />
                 Aktiv ({activeOrders.length})
                 {viewMode === "active" && (
-                  isStreamConnected ? (
-                    <Wifi className="h-3 w-3 text-green-500 ml-1" title="Echtzeit-Updates aktiv" />
+                  isRealtimeConnected ? (
+                    <Wifi className="h-3 w-3 text-green-500 ml-1" title="Echtzeit-Updates aktiv (PostgreSQL)" />
                   ) : (
                     <WifiOff className="h-3 w-3 text-orange-500 ml-1" title="Keine Echtzeit-Verbindung" />
                   )
