@@ -29,6 +29,7 @@ export function OrdersTab({ orders: initialOrders, restaurantId }: OrdersTabProp
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
   const [previousOrderCount, setPreviousOrderCount] = useState(initialOrders.length)
   const [newOrderIds, setNewOrderIds] = useState<Set<number>>(new Set())
+  const [completingOrderId, setCompletingOrderId] = useState<number | null>(null)
   
   // Sunmi Print Integration
   const { print: printToSunmi, isSunmiAvailable, checkSunmiService } = useSunmiPrint()
@@ -124,22 +125,46 @@ export function OrdersTab({ orders: initialOrders, restaurantId }: OrdersTabProp
   }, [isStreamConnected, viewMode, activeOrders.length])
 
   async function handleComplete(orderId: number) {
-    // Optimistic UI update - immediately remove from active orders
+    console.log('[v0] handleComplete - Starting for order:', orderId)
+    
+    // Set loading state for this specific order
+    setCompletingOrderId(orderId)
+    
+    // Optimistic UI update - immediately remove from active orders for instant visual feedback
     mutateActive(
-      async () => {
-        await markOrderCompleted(orderId)
-        return fetch(`/api/orders?restaurantId=${restaurantId}`).then(r => r.json())
-      },
       {
-        optimisticData: {
-          orders: activeOrders.filter(o => o.id !== orderId),
-          items: activeItems
-        },
-        rollbackOnError: true,
-        revalidate: true
-      }
+        orders: activeOrders.filter(o => o.id !== orderId),
+        items: activeItems
+      },
+      false // Don't revalidate yet - we'll do it manually after the action completes
     )
-    mutateArchive()
+    
+    // Execute server action in background
+    try {
+      const result = await markOrderCompleted(orderId)
+      console.log('[v0] handleComplete - Server action completed:', result)
+      
+      if (result.error) {
+        console.error('[v0] handleComplete - Error:', result.error)
+        // Rollback optimistic update on error
+        mutateActive()
+        toast.error('Fehler beim Archivieren der Bestellung')
+        setCompletingOrderId(null)
+        return
+      }
+      
+      // Success - trigger both active and archive to refresh
+      mutateActive()
+      mutateArchive()
+      toast.success('Bestellung erfolgreich archiviert')
+      setCompletingOrderId(null)
+    } catch (error) {
+      console.error('[v0] handleComplete - Exception:', error)
+      // Rollback optimistic update on exception
+      mutateActive()
+      toast.error('Fehler beim Archivieren der Bestellung')
+      setCompletingOrderId(null)
+    }
   }
 
   async function handleStatusChange(orderId: number, status: string) {
@@ -736,9 +761,10 @@ export function OrdersTab({ orders: initialOrders, restaurantId }: OrdersTabProp
                           variant="outline" 
                           className="w-full justify-start"
                           onClick={() => handleComplete(order.id)}
+                          disabled={completingOrderId === order.id}
                         >
                           <Check className="mr-2 h-4 w-4" />
-                          Erledigt
+                          {completingOrderId === order.id ? "Wird archiviert..." : "Erledigt"}
                         </Button>
                         <Button 
                           variant="outline" 
