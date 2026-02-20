@@ -12,7 +12,6 @@ import { useState, useEffect, useCallback } from "react"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { CancelOrderDialog } from "@/components/admin/cancel-order-dialog"
 import { useSunmiPrint } from "@/hooks/use-sunmi-print"
-import { useRealtimeOrders } from "@/hooks/use-realtime-orders"
 import { useNotificationSound } from "@/hooks/use-notification-sound"
 import { toast } from "sonner"
 
@@ -30,6 +29,7 @@ export function OrdersTab({ orders: initialOrders, restaurantId }: OrdersTabProp
   const [previousOrderCount, setPreviousOrderCount] = useState(initialOrders.length)
   const [newOrderIds, setNewOrderIds] = useState<Set<number>>(new Set())
   const [completingOrderId, setCompletingOrderId] = useState<number | null>(null)
+  const [previousOrderIds, setPreviousOrderIds] = useState<Set<number>>(new Set(initialOrders.map(o => o.id)))
   
   // Sunmi Print Integration
   const { print: printToSunmi, isSunmiAvailable, checkSunmiService } = useSunmiPrint()
@@ -43,11 +43,11 @@ export function OrdersTab({ orders: initialOrders, restaurantId }: OrdersTabProp
 
   const { data: activeData, mutate: mutateActive } = useSWR(`/api/orders?restaurantId=${restaurantId}`, fetcher, {
     fallbackData: { orders: initialOrders, items: {} },
-    refreshInterval: 30000, // Poll every 30 seconds as fallback only (PostgreSQL NOTIFY handles real-time updates)
+    refreshInterval: 2000, // Poll every 2 seconds for near-realtime updates (serverless-compatible)
     refreshWhenHidden: false, // Don't poll when tab is hidden to save resources
     refreshWhenOffline: false, // Don't poll when offline
     revalidateOnFocus: true, // Immediately check when user returns to tab
-    dedupingInterval: 5000, // Prevent duplicate requests within 5 seconds
+    dedupingInterval: 1000, // Prevent duplicate requests within 1 second
   })
 
   const { data: archiveData, mutate: mutateArchive } = useSWR(
@@ -69,60 +69,57 @@ export function OrdersTab({ orders: initialOrders, restaurantId }: OrdersTabProp
 
   const [estimatedTimes, setEstimatedTimes] = useState<Record<number, string>>({})
 
-  // Handle new order notifications from real-time database triggers
-  const handleNewOrder = useCallback((notification: { order_id: number; order_number: string; customer_name: string; restaurant_id: number }) => {
-    console.log('[v0] Real-time order received via PostgreSQL NOTIFY:', notification.order_number)
-    
-    // Mark order as new for highlighting
-    setNewOrderIds(prev => new Set([...prev, notification.order_id]))
-    
-    // Play notification sound using the hook
-    playNotificationSound()
-    
-    // Show toast notification with order details
-    toast.success(
-      `Neue Bestellung eingetroffen!\n${notification.order_number} - ${notification.customer_name}`,
-      {
-        duration: 8000,
-        action: {
-          label: 'Anzeigen',
-          onClick: () => {
-            // Scroll to the new order
-            const orderElement = document.querySelector(`[data-order-id="${notification.order_id}"]`)
-            orderElement?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-          }
-        }
-      }
-    )
-    
-    // CRITICAL: Force immediate revalidation to fetch full order details
-    // Using revalidate() ensures the UI updates without manual reload
-    console.log('[v0] Triggering immediate order refresh after database notification')
-    mutateActive(undefined, { revalidate: true })
-    
-    // Remove highlighting after 15 seconds
-    setTimeout(() => {
-      setNewOrderIds(prev => {
-        const newSet = new Set(prev)
-        newSet.delete(notification.order_id)
-        return newSet
-      })
-    }, 15000)
-  }, [mutateActive, playNotificationSound])
-
-  // Connect to real-time order notifications via PostgreSQL LISTEN/NOTIFY
-  const { isConnected: isRealtimeConnected } = useRealtimeOrders({
-    restaurantId,
-    onNewOrder: handleNewOrder,
-    enabled: viewMode === "active"
-  })
-
-  // Log realtime connection status for debugging
+  // Detect new orders via polling comparison
   useEffect(() => {
-    console.log(`[v0] PostgreSQL Realtime connection: ${isRealtimeConnected ? 'CONNECTED' : 'DISCONNECTED'}`)
-    console.log(`[v0] View mode: ${viewMode}`)
-    console.log(`[v0] Active orders count: ${activeOrders.length}`)
-  }, [isRealtimeConnected, viewMode, activeOrders.length])
+    if (viewMode !== "active" || !activeOrders.length) return
+    
+    const currentOrderIds = new Set(activeOrders.map(o => o.id))
+    
+    // Find orders that are new (in current but not in previous)
+    const newOrders = activeOrders.filter(order => !previousOrderIds.has(order.id))
+    
+    if (newOrders.length > 0) {
+      console.log('[v0] New orders detected via polling:', newOrders.length)
+      
+      newOrders.forEach(order => {
+        // Mark as new for highlighting
+        setNewOrderIds(prev => new Set([...prev, order.id]))
+        
+        // Play notification sound
+        playNotificationSound()
+        
+        // Show toast
+        toast.success(
+          `Neue Bestellung eingetroffen!\n${order.order_number} - ${order.customer_name}`,
+          {
+            duration: 8000,
+            action: {
+              label: 'Anzeigen',
+              onClick: () => {
+                const orderElement = document.querySelector(`[data-order-id="${order.id}"]`)
+                orderElement?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+              }
+            }
+          }
+        )
+        
+        // Remove highlighting after 15 seconds
+        setTimeout(() => {
+          setNewOrderIds(prev => {
+            const newSet = new Set(prev)
+            newSet.delete(order.id)
+            return newSet
+          })
+        }, 15000)
+      })
+    }
+    
+    // Update previous order IDs
+    setPreviousOrderIds(currentOrderIds)
+  }, [activeOrders, previousOrderIds, viewMode, playNotificationSound])
+
+  // Placeholder for UI indicator (no realtime connection in serverless)
+  const isRealtimeConnected = false
 
   async function handleComplete(orderId: number) {
     console.log('[v0] handleComplete - Starting for order:', orderId)
