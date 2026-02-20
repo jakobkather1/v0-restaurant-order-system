@@ -20,6 +20,7 @@ interface OrderItem {
 
 interface Order {
   id: number
+  order_number: string
   status: string
   customer_name: string
   customer_phone: string
@@ -101,11 +102,11 @@ export function OrderConfirmation({ order: initialOrder, slug }: { order: Order;
           <div className="flex items-center gap-4">
             {order.logo_url && (
               <img src={order.logo_url || "/placeholder.svg"} alt="" className="h-12 w-12 rounded-full bg-white p-1" />
-            )}
-            <div>
-              <h1 className="text-2xl font-bold">{order.restaurant_name}</h1>
-              <p className="text-white/80">Bestellung #{order.id}</p>
-            </div>
+  )}
+  <div>
+    <h1 className="text-2xl font-bold">{order.restaurant_name}</h1>
+    <p className="text-white/80">Bestellung #{order.order_number}</p>
+  </div>
           </div>
         </div>
       </header>
