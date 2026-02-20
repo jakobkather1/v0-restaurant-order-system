@@ -1,11 +1,30 @@
 "use client"
 
 import { useState, useEffect, useCallback, useRef } from "react"
+import useSWR from "swr"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { Separator } from "@/components/ui/separator"
 import { CancelOrderDialog } from "@/components/admin/cancel-order-dialog"
 import { useSunmiPrint } from "@/hooks/use-sunmi-print"
 import { useNotificationSound } from "@/hooks/use-notification-sound"
 import { toast } from "sonner"
+import { 
+  Clock, 
+  Archive, 
+  RefreshCw, 
+  Printer, 
+  Check, 
+  Ban, 
+  Phone, 
+  MapPin, 
+  Wifi,
+  WifiOff 
+} from "lucide-react"
+import { markOrderCompleted, cancelOrder, setOrderEstimatedTime } from "@/app/[slug]/admin/actions"
+import type { Order } from "@/lib/types"
 
 interface OrdersTabProps {
   orders: Order[]
@@ -31,7 +50,7 @@ export function OrdersTab({ orders: initialOrders, restaurantId }: OrdersTabProp
   
   useEffect(() => {
     checkSunmiService()
-  }, [])
+  }, [checkSunmiService])
 
   const { data: activeData, mutate: mutateActive } = useSWR(`/api/orders?restaurantId=${restaurantId}`, fetcher, {
     fallbackData: { orders: initialOrders, items: {} },
@@ -50,6 +69,8 @@ export function OrdersTab({ orders: initialOrders, restaurantId }: OrdersTabProp
     },
   )
 
+  const [estimatedTimes, setEstimatedTimes] = useState<Record<number, string>>({})
+
   const activeOrders = activeData?.orders || initialOrders
   const archiveOrders = archiveData?.orders || []
   const activeItems = activeData?.items || {}
@@ -58,8 +79,6 @@ export function OrdersTab({ orders: initialOrders, restaurantId }: OrdersTabProp
   const orders = viewMode === "active" ? activeOrders : archiveOrders
   const orderItems = viewMode === "active" ? activeItems : archiveItems
   const mutate = viewMode === "active" ? mutateActive : mutateArchive
-
-  const [estimatedTimes, setEstimatedTimes] = useState<Record<number, string>>({})
 
   // Detect new orders via polling comparison
   useEffect(() => {
