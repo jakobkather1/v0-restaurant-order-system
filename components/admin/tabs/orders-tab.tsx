@@ -13,6 +13,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { CancelOrderDialog } from "@/components/admin/cancel-order-dialog"
 import { useSunmiPrint } from "@/hooks/use-sunmi-print"
 import { useNotificationSound } from "@/hooks/use-notification-sound"
+import { useRealtimeOrders } from "@/hooks/use-realtime-orders"
 import { toast } from "sonner"
 
 interface OrdersTabProps {
@@ -43,11 +44,11 @@ export function OrdersTab({ orders: initialOrders, restaurantId }: OrdersTabProp
 
   const { data: activeData, mutate: mutateActive } = useSWR(`/api/orders?restaurantId=${restaurantId}`, fetcher, {
     fallbackData: { orders: initialOrders, items: {} },
-    refreshInterval: 2000, // Poll every 2 seconds for near-realtime updates (serverless-compatible)
+    refreshInterval: 30000, // Poll every 30 seconds as fallback (realtime handles primary updates)
     refreshWhenHidden: false, // Don't poll when tab is hidden to save resources
     refreshWhenOffline: false, // Don't poll when offline
     revalidateOnFocus: true, // Immediately check when user returns to tab
-    dedupingInterval: 1000, // Prevent duplicate requests within 1 second
+    dedupingInterval: 5000, // Prevent duplicate requests within 5 seconds
   })
 
   const { data: archiveData, mutate: mutateArchive } = useSWR(
@@ -69,57 +70,53 @@ export function OrdersTab({ orders: initialOrders, restaurantId }: OrdersTabProp
 
   const [estimatedTimes, setEstimatedTimes] = useState<Record<number, string>>({})
 
-  // Detect new orders via polling comparison
-  useEffect(() => {
-    if (viewMode !== "active" || !activeOrders.length) return
+  // Handle new orders from realtime connection
+  const handleNewOrder = useCallback((event: any) => {
+    console.log('[v0] Realtime new order received:', event)
     
-    const currentOrderIds = new Set(activeOrders.map(o => o.id))
+    // Mark as new for highlighting
+    setNewOrderIds(prev => new Set([...prev, event.order_id]))
     
-    // Find orders that are new (in current but not in previous)
-    const newOrders = activeOrders.filter(order => !previousOrderIds.has(order.id))
+    // Play notification sound
+    playNotificationSound()
     
-    if (newOrders.length > 0) {
-      console.log('[v0] New orders detected via polling:', newOrders.length)
-      
-      // Play notification sound ONCE for all new orders (avoid echo)
-      playNotificationSound()
-      
-      newOrders.forEach(order => {
-        // Mark as new for highlighting
-        setNewOrderIds(prev => new Set([...prev, order.id]))
-        
-        // Show toast
-        toast.success(
-          `Neue Bestellung eingetroffen!\n${order.order_number} - ${order.customer_name}`,
-          {
-            duration: 8000,
-            action: {
-              label: 'Anzeigen',
-              onClick: () => {
-                const orderElement = document.querySelector(`[data-order-id="${order.id}"]`)
-                orderElement?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-              }
-            }
+    // Show toast notification
+    toast.success(
+      `Neue Bestellung eingetroffen!\n#${event.order_number} - ${event.customer_name}`,
+      {
+        duration: 8000,
+        action: {
+          label: 'Anzeigen',
+          onClick: () => {
+            const orderElement = document.querySelector(`[data-order-id="${event.order_id}"]`)
+            orderElement?.scrollIntoView({ behavior: 'smooth', block: 'center' })
           }
-        )
-        
-        // Remove highlighting after 15 seconds
-        setTimeout(() => {
-          setNewOrderIds(prev => {
-            const newSet = new Set(prev)
-            newSet.delete(order.id)
-            return newSet
-          })
-        }, 15000)
-      })
-    }
+        }
+      }
+    )
     
-    // Update previous order IDs
-    setPreviousOrderIds(currentOrderIds)
-  }, [activeOrders, previousOrderIds, viewMode, playNotificationSound])
+    // Immediately refresh order data
+    mutateActive()
+    
+    // Remove highlighting after 15 seconds
+    setTimeout(() => {
+      setNewOrderIds(prev => {
+        const newSet = new Set(prev)
+        newSet.delete(event.order_id)
+        return newSet
+      })
+    }, 15000)
+  }, [playNotificationSound, mutateActive])
 
-  // Placeholder for UI indicator (no realtime connection in serverless)
-  const isRealtimeConnected = false
+  // Connect to realtime orders (only when viewing active orders)
+  const { isConnected: isRealtimeConnected } = useRealtimeOrders({
+    restaurantId,
+    enabled: viewMode === "active",
+    onNewOrder: handleNewOrder,
+    onError: (error) => {
+      console.error('[v0] Realtime orders error:', error)
+    }
+  })
 
   async function handleComplete(orderId: number) {
     console.log('[v0] handleComplete - Starting for order:', orderId)
