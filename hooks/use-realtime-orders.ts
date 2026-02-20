@@ -78,15 +78,15 @@ export function useRealtimeOrders({
         eventSource.close()
         eventSourceRef.current = null
 
-        // Attempt to reconnect with exponential backoff
-        const backoffTime = Math.min(1000 * Math.pow(2, reconnectAttemptsRef.current), 30000)
+        // Attempt to reconnect after 3 seconds (fixed interval for reliability)
         reconnectAttemptsRef.current++
+        const reconnectDelay = 3000
 
-        console.log(`[v0] Reconnecting in ${backoffTime}ms (attempt ${reconnectAttemptsRef.current})`)
+        console.log(`[v0] Reconnecting in ${reconnectDelay}ms (attempt ${reconnectAttemptsRef.current})`)
 
         reconnectTimeoutRef.current = setTimeout(() => {
           connect()
-        }, backoffTime)
+        }, reconnectDelay)
 
         onError?.(new Error('Realtime connection lost'))
       }
