@@ -141,6 +141,7 @@ export function CheckoutFlow({
   } | null>(null)
 
   const [orderId, setOrderId] = useState<number | null>(null)
+  const [orderNumber, setOrderNumber] = useState<number | null>(null)
 
   const containerRef = useRef(null)
 
@@ -483,9 +484,10 @@ export function CheckoutFlow({
           console.error("Failed to save contact data:", error)
         }
         
-        setOrderId(result.orderId ?? null)
-        setStep("success")
-        onSuccess()
+    setOrderId(result.orderId ?? null)
+    setOrderNumber(result.orderNumber ?? null)
+    setStep("success")
+    onSuccess()
       } else {
         setError(result.error || "Fehler beim Erstellen der Bestellung")
       }
@@ -624,10 +626,10 @@ export function CheckoutFlow({
               >
                 <CheckCircle className="h-8 w-8 sm:h-10 sm:w-10" style={{ color: restaurant.primary_color }} />
               </div>
-              <div className="text-xl sm:text-2xl font-bold mb-2">Bestellung aufgegeben!</div>
-              <p className="text-gray-500 mb-3 sm:mb-4 text-sm sm:text-base">
-                Deine Bestellnummer ist <span className="font-bold text-foreground">#{orderId}</span>
-              </p>
+          <div className="text-xl sm:text-2xl font-bold mb-2">Bestellung aufgegeben!</div>
+          <p className="text-gray-500 mb-3 sm:mb-4 text-sm sm:text-base">
+            Deine Bestellnummer ist <span className="font-bold text-foreground">#{orderNumber}</span>
+          </p>
               <p className="text-xs sm:text-sm text-gray-400 mb-6 sm:mb-8">
                 {orderType === "pickup"
                   ? "Du kannst deine Bestellung in Kürze bei uns abholen."
