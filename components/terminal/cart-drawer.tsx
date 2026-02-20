@@ -190,7 +190,7 @@ export function CartDrawer({
                     <div className="flex justify-between items-center text-sm">
                       <span className="text-gray-600">Liefergebühr</span>
                       <span className="font-semibold text-gray-900">
-                        {selectedZone ? `${(Number(selectedZone.delivery_fee) || 0).toFixed(2)}€` : "wird berechnet"}
+                        {selectedZone ? `${(Number(selectedZone.price) || 0).toFixed(2)}€` : "wird berechnet"}
                       </span>
                     </div>
                   )}
@@ -200,7 +200,7 @@ export function CartDrawer({
                     <div className="flex justify-between items-center pt-2 border-t">
                       <span className="text-gray-900 font-semibold text-sm sm:text-base">Gesamt</span>
                       <span className="text-xl sm:text-2xl font-bold text-gray-900">
-                        {(subtotal + (Number(selectedZone.delivery_fee) || 0)).toFixed(2)}€
+                        {(subtotal + (Number(selectedZone.price) || 0)).toFixed(2)}€
                       </span>
                     </div>
                   )}
