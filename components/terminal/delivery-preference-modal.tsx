@@ -322,7 +322,7 @@ export function DeliveryPreferenceModal({
                         <div className="flex items-center gap-2 text-gray-700">
                           <div className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: primaryColor }} />
                           <span className="font-medium">Liefergebühr:</span>
-                          <span className="font-bold">{(Number(selectedZone.delivery_fee) || 0).toFixed(2)}€</span>
+                          <span className="font-bold">{(Number(selectedZone.price) || 0).toFixed(2)}€</span>
                         </div>
                         {(Number(selectedZone.minimum_order_value) || 0) > 0 && (
                           <div className="flex items-center gap-2 text-gray-700">

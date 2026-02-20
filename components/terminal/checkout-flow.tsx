@@ -146,7 +146,7 @@ export function CheckoutFlow({
 
   // Calculations
   const subtotal = cart.reduce((sum, item) => sum + item.totalPrice * item.quantity, 0)
-  const deliveryFee = orderType === "pickup" ? 0 : selectedZone ? (Number(selectedZone.delivery_fee) || 0) : 0
+  const deliveryFee = orderType === "pickup" ? 0 : selectedZone ? (Number(selectedZone.price) || 0) : 0
   const meetsMinimumOrder = !appliedDiscount || subtotal >= appliedDiscount.minimumOrderValue
 
   let discountAmount = 0
@@ -946,11 +946,11 @@ export function CheckoutFlow({
                             <SelectValue placeholder="Bitte Liefergebiet wählen..." />
                           </SelectTrigger>
                           <SelectContent>
-                            {matchingZones.map((zone) => (
-                              <SelectItem key={zone.id} value={zone.id.toString()}>
-                                {zone.name} - {Number(zone.delivery_fee).toFixed(2)}€
-                                {zone.minimum_order_value && Number(zone.minimum_order_value) > 0 && (
-                                  <span className="text-xs text-muted-foreground ml-1">
+                {matchingZones.map((zone) => (
+                  <SelectItem key={zone.id} value={zone.id.toString()}>
+                    {zone.name} - {Number(zone.price).toFixed(2)}€
+                    {zone.minimum_order_value && Number(zone.minimum_order_value) > 0 && (
+                      <span className="text-xs text-muted-foreground ml-1">
                                     (Min. {Number(zone.minimum_order_value).toFixed(2)}€)
                                   </span>
                                 )}
@@ -970,12 +970,12 @@ export function CheckoutFlow({
                         <div className="flex items-start gap-2">
                           <CheckCircle className="h-4 w-4 text-green-600 mt-0.5 shrink-0" />
                           <div className="text-sm">
-                            <p className="font-medium text-green-900">Liefergebiet: {selectedZone.name}</p>
-                            <p className="text-xs text-green-700 mt-0.5">
-                              Lieferkosten: {Number(selectedZone.delivery_fee).toFixed(2)}€
-                              {selectedZone.minimum_order_value && Number(selectedZone.minimum_order_value) > 0 && (
-                                <> • Mindestbestellwert: {Number(selectedZone.minimum_order_value).toFixed(2)}€</>
-                              )}
+                <p className="font-medium text-green-900">Liefergebiet: {selectedZone.name}</p>
+                <p className="text-xs text-green-700 mt-0.5">
+                  Lieferkosten: {Number(selectedZone.price).toFixed(2)}€
+                  {selectedZone.minimum_order_value && Number(selectedZone.minimum_order_value) > 0 && (
+                    <> • Mindestbestellwert: {Number(selectedZone.minimum_order_value).toFixed(2)}€</>
+                  )}
                             </p>
                           </div>
                         </div>

@@ -280,16 +280,16 @@ export function SeoFooter({ restaurant, isCustomDomain, deliveryZones = [] }: Se
                     {zone.minimum_order_value > 0 && (
                       <div className="flex items-start gap-2">
                         <span className="font-medium min-w-[120px]">Mindestbestellwert:</span>
-                        <span className="text-muted-foreground">{Number(zone.minimum_order_value).toFixed(2)}€</span>
-                      </div>
-                    )}
-                    
-                    {zone.delivery_fee > 0 && (
-                      <div className="flex items-start gap-2">
-                        <span className="font-medium min-w-[120px]">Liefergebühr:</span>
-                        <span className="text-muted-foreground">{Number(zone.delivery_fee).toFixed(2)}€</span>
-                      </div>
-                    )}
+                      <span className="text-muted-foreground">{Number(zone.minimum_order_value).toFixed(2)}€</span>
+                    </div>
+                  )}
+                  
+                  {zone.price > 0 && (
+                    <div className="flex items-start gap-2">
+                      <span className="font-medium min-w-[120px]">Liefergebühr:</span>
+                      <span className="text-muted-foreground">{Number(zone.price).toFixed(2)}€</span>
+                    </div>
+                  )}
                   </div>
                 </div>
               ))

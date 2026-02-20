@@ -40,7 +40,7 @@ export function RestaurantInfoBar({
       ? Math.min(...deliveryZones.map(z => Number(z.minimum_order_value)).filter(v => v > 0))
       : null
   
-  const deliveryFee = selectedZone ? Number(selectedZone.delivery_fee) : null
+  const deliveryFee = selectedZone ? Number(selectedZone.price) : null
 
   return (
     <div className="bg-white sticky top-0 z-40">
@@ -148,10 +148,10 @@ export function RestaurantInfoBar({
                     </div>
                   )}
                   
-                  {zone.delivery_fee > 0 && (
+                  {zone.price > 0 && (
                     <div className="flex items-start gap-2">
                       <span className="font-medium min-w-[120px]">Liefergebühr:</span>
-                      <span className="text-muted-foreground">{Number(zone.delivery_fee).toFixed(2)}€</span>
+                      <span className="text-muted-foreground">{Number(zone.price).toFixed(2)}€</span>
                     </div>
                   )}
                 </div>
