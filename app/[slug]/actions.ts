@@ -245,8 +245,8 @@ export async function createOrder(data: OrderData) {
   revalidatePath("/", "layout")
   
   console.log("[v0] ==================== CREATE ORDER COMPLETE ====================")
-  console.log("[v0] DEBUG: Returning success with orderId:", orderId, "and orderNumber:", nextOrderNumber)
-  return { success: true, orderId, orderNumber: nextOrderNumber }
+  console.log("[v0] DEBUG: Returning success with orderId:", orderId)
+  return { success: true, orderId }
 }
 
 export async function checkDiscountCode(restaurantId: number, code: string) {
