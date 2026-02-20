@@ -80,20 +80,35 @@ export function useNotificationSound() {
 
   const playSound = useCallback(() => {
     if (!audioRef.current) {
-      console.warn('[v0] Audio not initialized')
+      console.warn('[v0] Audio not initialized yet')
       return Promise.resolve()
     }
 
-    console.log('[v0] Playing notification sound')
+    console.log('[v0] Attempting to play notification sound...')
     
-    return audioRef.current.play().catch((error) => {
-      // Autoplay was prevented - this is expected on first load
-      if (error.name === 'NotAllowedError') {
-        console.log('[v0] Autoplay prevented (user interaction required)')
-      } else {
-        console.warn('[v0] Error playing notification sound:', error)
+    try {
+      const playPromise = audioRef.current.play()
+      
+      if (playPromise !== undefined) {
+        return playPromise
+          .then(() => {
+            console.log('[v0] Notification sound played successfully')
+          })
+          .catch((error) => {
+            // Autoplay was prevented - this is expected on first load
+            if (error.name === 'NotAllowedError') {
+              console.log('[v0] Autoplay prevented - user interaction required first')
+            } else {
+              console.warn('[v0] Error playing notification sound:', error)
+            }
+          })
       }
-    })
+      
+      return Promise.resolve()
+    } catch (error) {
+      console.warn('[v0] Exception playing notification sound:', error)
+      return Promise.resolve()
+    }
   }, [])
 
   return { playSound, isReady: !!audioRef.current }
