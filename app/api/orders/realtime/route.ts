@@ -41,12 +41,12 @@ export async function GET(request: NextRequest) {
         encoder.encode(`data: ${JSON.stringify({ type: 'connected', restaurantId })}\n\n`)
       )
       
-      // Send keepalive every 30 seconds
+      // Send keepalive every 15 seconds (prevents connection timeout)
       const keepaliveInterval = setInterval(() => {
         writer.write(encoder.encode(`: keepalive\n\n`)).catch(() => {
           clearInterval(keepaliveInterval)
         })
-      }, 30000)
+      }, 15000)
       
       // Handle notifications from PostgreSQL
       client.on('notification', async (msg) => {
