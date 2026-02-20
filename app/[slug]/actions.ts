@@ -181,7 +181,7 @@ export async function createOrder(data: OrderData) {
     console.log("[v0] TRIGGER: Notification sender imported successfully")
     
     const notificationTitle = 'Neue Bestellung eingegangen!'
-    const notificationMessage = `Bestellung #${orderId} von ${data.customerName} - ${total.toFixed(2)}€`
+    const notificationMessage = `Bestellung #${nextOrderNumber} von ${data.customerName} - ${total.toFixed(2)}€`
     const orderUrl = restaurant?.slug ? `/${restaurant.slug}/admin/dashboard` : '/admin/dashboard'
     
     console.log("[v0] TRIGGER: Notification details:", {
