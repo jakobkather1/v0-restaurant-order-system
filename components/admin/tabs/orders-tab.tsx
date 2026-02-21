@@ -591,42 +591,18 @@ export function OrdersTab({ orders: initialOrders, restaurantId }: OrdersTabProp
           )}
         </div>
         
-        <div className="flex gap-2 flex-wrap w-full sm:w-auto">
-          <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as "active" | "archive")} className="w-full sm:w-auto">
-            <TabsList className="grid w-full grid-cols-2 sm:w-auto sm:inline-flex">
-              <TabsTrigger value="active" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
-                <Clock className="h-3 w-3 sm:h-4 sm:w-4" />
-                Aktiv ({activeOrders.length})
-              </TabsTrigger>
-              <TabsTrigger value="archive" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
-                <Archive className="h-3 w-3 sm:h-4 sm:w-4" />
-                Archiv
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
-          <Button variant="outline" size="sm" onClick={() => mutate()} className="w-full sm:w-auto">
-            <RefreshCw className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
-            <span className="text-xs sm:text-sm">Aktualisieren</span>
-          </Button>
-        </div>
+        <Button variant="outline" size="sm" onClick={() => mutateActive()} className="w-full sm:w-auto">
+          <RefreshCw className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+          <span className="text-xs sm:text-sm">Aktualisieren</span>
+        </Button>
       </div>
 
       {orders.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center text-muted-foreground">
-            {viewMode === "active" ? (
-              <>
-                <Clock className="mx-auto mb-4 h-12 w-12 opacity-50" />
-                <p>Keine aktiven Bestellungen</p>
-                <p className="text-sm">Neue Bestellungen erscheinen hier automatisch</p>
-              </>
-            ) : (
-              <>
-                <Archive className="mx-auto mb-4 h-12 w-12 opacity-50" />
-                <p>Kein Archiv vorhanden</p>
-                <p className="text-sm">Erledigte Bestellungen werden hier für 24h archiviert</p>
-              </>
-            )}
+            <Clock className="mx-auto mb-4 h-12 w-12 opacity-50" />
+            <p>Keine Bestellungen</p>
+            <p className="text-sm">Neue Bestellungen erscheinen hier automatisch</p>
           </CardContent>
         </Card>
       ) : (
