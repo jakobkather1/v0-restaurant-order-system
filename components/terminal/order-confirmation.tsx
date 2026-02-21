@@ -59,10 +59,11 @@ const pickupStatusSteps = [
   { key: "ready", label: "Abholbereit", icon: Package },
 ]
 
-export function OrderConfirmation({ order: initialOrder, slug }: { order: Order; slug: string }) {
+  export function OrderConfirmation({ order: initialOrder, slug }: { order: Order; slug: string }) {
   const { data: orderData } = useSWR<{ order: Order }>(`/api/orders/${initialOrder.id}`, fetcher, {
-    refreshInterval: 5000,
     fallbackData: { order: initialOrder },
+    revalidateOnFocus: false,
+    revalidateOnReconnect: false,
   })
 
   const order = orderData?.order || initialOrder

@@ -4,7 +4,7 @@ import { markOrderCompleted, updateOrderStatus, setOrderEstimatedTime } from "@/
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Check, Clock, Phone, MapPin, Printer, RefreshCw, Timer, Truck, Store, Archive, Ban, Wifi, WifiOff } from "lucide-react"
+import { Check, Clock, Phone, MapPin, Printer, RefreshCw, Timer, Truck, Store, Archive, Ban } from "lucide-react"
 import type { Order, OrderItem } from "@/lib/types"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
@@ -37,10 +37,7 @@ export function OrdersTab({ orders: initialOrders, restaurantId }: OrdersTabProp
   const [viewMode, setViewMode] = useState<"active" | "archive">("active")
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false)
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
-  const [previousOrderCount, setPreviousOrderCount] = useState(initialOrders.length)
-  const [newOrderIds, setNewOrderIds] = useState<Set<number>>(new Set())
   const [completingOrderId, setCompletingOrderId] = useState<number | null>(null)
-  const previousOrderIds = useRef<Set<number>>(new Set(initialOrders.map(o => o.id)))
   
   // Sunmi Print Integration
   const { print: printToSunmi, isSunmiAvailable, checkSunmiService } = useSunmiPrint()
@@ -51,27 +48,12 @@ export function OrdersTab({ orders: initialOrders, restaurantId }: OrdersTabProp
 
   const { data: activeData, mutate: mutateActive } = useSWR(`/api/orders?restaurantId=${restaurantId}`, fetcher, {
     fallbackData: { orders: initialOrders, items: {} },
-    refreshInterval: 2000, // Poll every 2 seconds for near-realtime updates (serverless-compatible)
-    refreshWhenHidden: false, // Don't poll when tab is hidden to save resources
-    refreshWhenOffline: false, // Don't poll when offline
-    revalidateOnFocus: true, // Immediately check when user returns to tab
-    dedupingInterval: 1000, // Prevent duplicate requests within 1 second
+    revalidateOnFocus: false, // Disable automatic revalidation
+    revalidateOnReconnect: false, // Disable revalidation on reconnect
     onError: (error) => {
       // Silently log errors to prevent React crash in iframe
-      console.warn('[v0] SWR polling error:', error)
+      console.warn('[v0] SWR fetch error:', error)
     },
-    compare: (a, b) => {
-      // Custom comparator to detect new orders more reliably
-      if (!a || !b) return false
-      // Ensure we have arrays before mapping to prevent TypeError
-      const aOrders = Array.isArray(a.orders) ? a.orders : []
-      const bOrders = Array.isArray(b.orders) ? b.orders : []
-      
-      const aIds = new Set(aOrders.map((o: Order) => o.id))
-      const bIds = new Set(bOrders.map((o: Order) => o.id))
-      
-      return aIds.size === bIds.size && [...aIds].every(id => bIds.has(id))
-    }
   })
 
   const { data: archiveData, mutate: mutateArchive } = useSWR(
@@ -80,7 +62,7 @@ export function OrdersTab({ orders: initialOrders, restaurantId }: OrdersTabProp
     {
       fallbackData: { orders: [], items: {} },
       onError: (error) => {
-        console.warn('[v0] Archive SWR polling error:', error)
+        console.warn('[v0] Archive SWR fetch error:', error)
       },
     },
   )
@@ -95,51 +77,6 @@ export function OrdersTab({ orders: initialOrders, restaurantId }: OrdersTabProp
   const mutate = viewMode === "active" ? mutateActive : mutateArchive
 
   const [estimatedTimes, setEstimatedTimes] = useState<Record<number, string>>({})
-
-  // Detect new orders via polling comparison (SSE not compatible with Vercel serverless)
-  useEffect(() => {
-    if (viewMode !== "active") return
-    
-    const currentOrderIds = new Set(activeOrders.map(o => o.id))
-    const newOrders = activeOrders.filter(order => !previousOrderIds.current.has(order.id))
-    
-    if (newOrders.length > 0) {
-      newOrders.forEach(order => {
-        // Mark as new for highlighting
-        setNewOrderIds(prev => new Set([...prev, order.id]))
-        
-        // Show toast notification
-        toast.success(
-          `Neue Bestellung eingetroffen!\n#${order.order_number} - ${order.customer_name}`,
-          {
-            duration: 8000,
-            action: {
-              label: 'Anzeigen',
-              onClick: () => {
-                const orderElement = document.querySelector(`[data-order-id="${order.id}"]`)
-                orderElement?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-              }
-            }
-          }
-        )
-        
-        // Remove highlighting after 15 seconds
-        setTimeout(() => {
-          setNewOrderIds(prev => {
-            const newSet = new Set(prev)
-            newSet.delete(order.id)
-            return newSet
-          })
-        }, 15000)
-      })
-    }
-    
-    // Update previous order IDs
-    previousOrderIds.current = currentOrderIds
-  }, [activeOrders, viewMode])
-
-  // No realtime connection on Vercel serverless
-  const isRealtimeConnected = false
 
   async function handleComplete(orderId: number) {
     // Set loading state for this specific order
@@ -546,13 +483,6 @@ export function OrdersTab({ orders: initialOrders, restaurantId }: OrdersTabProp
               <TabsTrigger value="active" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
                 <Clock className="h-3 w-3 sm:h-4 sm:w-4" />
                 Aktiv ({activeOrders.length})
-                {viewMode === "active" && (
-                  isRealtimeConnected ? (
-                    <Wifi className="h-3 w-3 text-green-500 ml-1" title="Echtzeit-Updates aktiv (PostgreSQL)" />
-                  ) : (
-                    <WifiOff className="h-3 w-3 text-orange-500 ml-1" title="Keine Echtzeit-Verbindung" />
-                  )
-                )}
               </TabsTrigger>
               <TabsTrigger value="archive" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
                 <Archive className="h-3 w-3 sm:h-4 sm:w-4" />
@@ -602,7 +532,7 @@ export function OrdersTab({ orders: initialOrders, restaurantId }: OrdersTabProp
                     : order.order_type === "pickup"
                       ? "border-l-4 border-l-green-500"
                       : "border-l-4 border-l-purple-500"
-                } ${newOrderIds.has(order.id) ? "animate-pulse ring-2 ring-yellow-400 shadow-lg" : ""} transition-all duration-300`}
+                } transition-all duration-300`}
               >
                 <CardHeader className="pb-3">
                   <div className="flex items-center justify-between flex-wrap gap-2">
