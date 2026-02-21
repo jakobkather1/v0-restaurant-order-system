@@ -28,30 +28,23 @@ export function AdminLoginForm({ restaurant, isCustomDomain }: AdminLoginFormPro
     const formData = new FormData(e.currentTarget)
     const password = formData.get("password") as string
 
-    console.log("[v0] LoginForm - Submitting login for restaurant:", restaurant.id)
-
     try {
       // Server action now handles redirect internally, so we only get here if there's an error
       const result = await loginRestaurantAdmin(restaurant.id, password, restaurant.slug, isCustomDomain)
       
-      console.log("[v0] LoginForm - Got result (error case):", result)
-      
       // If we got here, it means there was an error (redirect() throws, so success doesn't return)
       if (result?.error) {
-        console.log("[v0] LoginForm - Login error:", result.error)
         setError(result.error)
         setLoading(false)
         return
       }
       
       // This shouldn't happen
-      console.log("[v0] LoginForm - Unexpected: no error but no redirect")
       setError("Unerwarteter Fehler beim Login")
       setLoading(false)
     } catch (error: any) {
       // Next.js redirect() throws a special error - this is expected for successful login
       if (error?.digest?.startsWith('NEXT_REDIRECT')) {
-        console.log("[v0] LoginForm - Redirect happening (success)")
         // Keep loading state, redirect is in progress
         return
       }

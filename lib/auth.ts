@@ -212,15 +212,11 @@ export async function getRestaurantAdminSession() {
   const cookieStore = await cookies()
   const session = cookieStore.get("restaurant_admin_session")
   
-  console.log("[v0] getRestaurantAdminSession - Cookie value:", session?.value ? "present" : "missing")
-  
   if (!session?.value) {
-    console.log("[v0] getRestaurantAdminSession - No session cookie found")
     return null
   }
   
   const parsed = JSON.parse(session.value) as { restaurantId: number }
-  console.log("[v0] getRestaurantAdminSession - Session found for restaurant:", parsed.restaurantId)
   return parsed
   } catch (error) {
   console.error("[v0] getRestaurantAdminSession - Error:", error)
@@ -230,7 +226,6 @@ export async function getRestaurantAdminSession() {
 
 export async function setRestaurantAdminSession(restaurantId: number) {
   try {
-  console.log("[v0] setRestaurantAdminSession - Setting session for restaurant:", restaurantId)
   const cookieStore = await cookies()
   const sessionData = JSON.stringify({ restaurantId })
   
@@ -241,8 +236,6 @@ export async function setRestaurantAdminSession(restaurantId: number) {
     maxAge: 60 * 60 * 24, // 24 hours
     path: "/",
   })
-  
-  console.log("[v0] setRestaurantAdminSession - Session cookie set successfully")
   } catch (error) {
   console.error("[v0] setRestaurantAdminSession - Error:", error)
   }

@@ -13,34 +13,26 @@ import { redirect } from "next/navigation"
 import type { Restaurant } from "@/lib/types"
 
 export async function loginRestaurantAdmin(restaurantId: number, password: string, slug: string, isCustomDomain = false) {
-  console.log("[v0] loginRestaurantAdmin - Starting for restaurant:", restaurantId, "slug:", slug)
-  
   const result = await sql`SELECT admin_password_hash FROM restaurants WHERE id = ${restaurantId}`
   const restaurant = result[0]
 
   if (!restaurant?.admin_password_hash) {
-    console.log("[v0] loginRestaurantAdmin - No password hash found")
     return { error: "Kein Passwort gesetzt" }
   }
 
-  console.log("[v0] loginRestaurantAdmin - Verifying password...")
   const isValid = await verifyPassword(password, restaurant.admin_password_hash)
   
   if (!isValid) {
-    console.log("[v0] loginRestaurantAdmin - Invalid password")
     return { error: "Ungültiges Passwort" }
   }
 
-  console.log("[v0] loginRestaurantAdmin - Password valid, setting session...")
   await setRestaurantAdminSession(restaurantId)
-  console.log("[v0] loginRestaurantAdmin - Session set successfully")
   
   // Revalidate paths to ensure fresh data
   const dashboardPath = isCustomDomain ? "/admin/dashboard" : `/${slug}/admin/dashboard`
   revalidatePath(dashboardPath)
   revalidatePath(isCustomDomain ? "/admin" : `/${slug}/admin`)
   
-  console.log("[v0] loginRestaurantAdmin - Redirecting to dashboard:", dashboardPath)
   // Server-side redirect ensures cookie is set before navigation
   redirect(dashboardPath)
 }
