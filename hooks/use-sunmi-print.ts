@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 
 interface SunmiPrintRequest {
   restaurantId: string
@@ -39,12 +39,12 @@ const SUNMI_SERVICE_URL = 'http://127.0.0.1:8888'
 
 export function useSunmiPrint() {
   const [isAvailable, setIsAvailable] = useState<boolean | null>(null)
-  const isChecking = useRef(false)
+  const [isChecking, setIsChecking] = useState(false)
 
   const checkSunmiService = useCallback(async () => {
-    if (isChecking.current) return
+    if (isChecking) return
     
-    isChecking.current = true
+    setIsChecking(true)
     console.log('[v0] Checking Sunmi service at:', SUNMI_SERVICE_URL)
     
     try {
@@ -66,9 +66,9 @@ export function useSunmiPrint() {
       console.log('[v0] Sunmi service not reachable:', error instanceof Error ? error.message : error)
       setIsAvailable(false)
     } finally {
-      isChecking.current = false
+      setIsChecking(false)
     }
-  }, [])
+  }, [isChecking])
 
   useEffect(() => {
     checkSunmiService()

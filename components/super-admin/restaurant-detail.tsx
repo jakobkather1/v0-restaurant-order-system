@@ -34,7 +34,6 @@ import { Bar, BarChart, XAxis, YAxis, ResponsiveContainer, Tooltip, Legend } fro
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { BillingTab } from "./billing-tab"
-import { RestaurantUsernameSettings } from "./restaurant-username-settings"
 
 interface RestaurantDetailProps {
   restaurant: Restaurant
@@ -323,11 +322,6 @@ export function RestaurantDetail({ restaurant, revenue, billings = [] }: Restaur
                   </Button>
                 </CardContent>
               </Card>
-
-              <RestaurantUsernameSettings 
-                restaurantId={restaurant.id} 
-                currentUsername={restaurant.admin_username || ""} 
-              />
 
               <Card>
                 <CardHeader>
