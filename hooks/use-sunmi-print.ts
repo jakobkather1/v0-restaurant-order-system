@@ -42,28 +42,33 @@ export function useSunmiPrint() {
   const isChecking = useRef(false)
 
   const checkSunmiService = useCallback(async () => {
-    if (isChecking.current) return
+    // Early exit if already checking or not in browser
+    if (isChecking.current || typeof window === 'undefined') return
     
     isChecking.current = true
-    console.log('[v0] Checking Sunmi service at:', SUNMI_SERVICE_URL)
     
     try {
+      // Wrap entire check in try-catch to prevent any unhandled errors
+      // In v0 HTTPS preview, localhost HTTP calls will fail with Mixed Content or CORS errors
       const response = await fetch(`${SUNMI_SERVICE_URL}/health`, {
         method: 'GET',
         signal: AbortSignal.timeout(2000),
+      }).catch((fetchError) => {
+        // Silently catch fetch errors (CORS, Mixed Content, Network errors)
+        console.log('[v0] Sunmi service fetch blocked (expected in preview):', fetchError.message)
+        return null
       })
       
-      if (response.ok) {
-        const data = await response.json()
-        const isReady = data.status === 'ready'
-        console.log('[v0] Sunmi service health check:', data, 'Ready:', isReady)
+      if (response && response.ok) {
+        const data = await response.json().catch(() => null)
+        const isReady = data?.status === 'ready'
         setIsAvailable(isReady)
       } else {
-        console.log('[v0] Sunmi service health check failed with status:', response.status)
         setIsAvailable(false)
       }
     } catch (error) {
-      console.log('[v0] Sunmi service not reachable:', error instanceof Error ? error.message : error)
+      // Catch any unexpected errors to prevent React crash
+      console.log('[v0] Sunmi service check failed silently:', error instanceof Error ? error.message : 'Unknown error')
       setIsAvailable(false)
     } finally {
       isChecking.current = false

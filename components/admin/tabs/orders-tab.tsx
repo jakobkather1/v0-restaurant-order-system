@@ -19,7 +19,19 @@ interface OrdersTabProps {
   restaurantId: number
 }
 
-const fetcher = (url: string) => fetch(url).then((r) => r.json())
+const fetcher = async (url: string) => {
+  try {
+    const response = await fetch(url)
+    if (!response.ok) {
+      console.warn('[v0] Orders fetch failed:', response.status)
+      return { orders: [], items: {} }
+    }
+    return await response.json()
+  } catch (error) {
+    console.warn('[v0] Orders fetch error (expected in some preview environments):', error instanceof Error ? error.message : error)
+    return { orders: [], items: {} }
+  }
+}
 
 export function OrdersTab({ orders: initialOrders, restaurantId }: OrdersTabProps) {
   const [viewMode, setViewMode] = useState<"active" | "archive">("active")
@@ -44,6 +56,10 @@ export function OrdersTab({ orders: initialOrders, restaurantId }: OrdersTabProp
     refreshWhenOffline: false, // Don't poll when offline
     revalidateOnFocus: true, // Immediately check when user returns to tab
     dedupingInterval: 1000, // Prevent duplicate requests within 1 second
+    onError: (error) => {
+      // Silently log errors to prevent React crash in iframe
+      console.warn('[v0] SWR polling error:', error)
+    },
     compare: (a, b) => {
       // Custom comparator to detect new orders more reliably
       if (!a || !b) return false
@@ -58,6 +74,9 @@ export function OrdersTab({ orders: initialOrders, restaurantId }: OrdersTabProp
     fetcher,
     {
       fallbackData: { orders: [], items: {} },
+      onError: (error) => {
+        console.warn('[v0] Archive SWR polling error:', error)
+      },
     },
   )
 
