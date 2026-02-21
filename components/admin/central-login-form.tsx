@@ -28,23 +28,24 @@ export function CentralAdminLoginForm() {
     try {
       const result = await loginRestaurantAdminCentral(username, password)
       
-      if (result.error) {
+      // If we get here, the redirect didn't happen (error occurred)
+      if (result?.error) {
         console.log("[v0] Central Login - Error:", result.error)
         setError(result.error)
         setLoading(false)
         return
       }
       
-      if (result.success && result.redirectUrl) {
-        console.log("[v0] Central Login - Success! Redirecting to:", result.redirectUrl)
-        router.push(result.redirectUrl)
-        return
-      }
-      
+      // This shouldn't be reached if redirect() works
       setError("Unerwarteter Fehler beim Login")
       setLoading(false)
     } catch (error: any) {
       console.error("[v0] Central Login - Exception:", error)
+      // Check if it's a redirect error (Next.js throws on redirect)
+      if (error?.message?.includes('NEXT_REDIRECT')) {
+        // This is expected, redirect is happening
+        return
+      }
       setError(error?.message || "Login fehlgeschlagen")
       setLoading(false)
     }

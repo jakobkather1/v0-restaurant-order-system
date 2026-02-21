@@ -1,5 +1,6 @@
 "use server"
 
+import { redirect } from "next/navigation"
 import { sql } from "@/lib/db"
 import { verifyPassword, setRestaurantAdminSession } from "@/lib/auth"
 
@@ -44,15 +45,8 @@ export async function loginRestaurantAdminCentral(username: string, password: st
     
     console.log("[v0] Central Login - Session set, redirecting to dashboard")
     
-    // Redirect to restaurant admin dashboard
-    const redirectUrl = `/${restaurant.slug}/admin/dashboard`
-    
-    return { 
-      success: true, 
-      redirectUrl,
-      restaurantId: restaurant.id,
-      restaurantName: restaurant.name
-    }
+    // Redirect directly to restaurant admin dashboard (server-side redirect)
+    redirect(`/${restaurant.slug}/admin/dashboard`)
   } catch (error) {
     console.error("[v0] Central Login - Error:", error)
     return { 
