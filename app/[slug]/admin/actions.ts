@@ -656,7 +656,9 @@ export async function markOrderCompleted(orderId: number) {
     WHERE id = ${orderId} AND restaurant_id = ${session.restaurantId}
   `
 
-  revalidatePath("/", "layout")
+  // Revalidate the dashboard page and API routes to ensure fresh data on refresh
+  revalidatePath("/admin/dashboard")
+  revalidatePath("/api/orders")
   return { success: true }
 }
 
