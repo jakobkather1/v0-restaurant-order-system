@@ -82,35 +82,39 @@ export function OrdersTab({ orders: initialOrders, restaurantId }: OrdersTabProp
     // Set loading state for this specific order
     setCompletingOrderId(orderId)
     
-    // Optimistic UI update - immediately remove from active orders for instant visual feedback
-    mutateActive(
-      {
-        orders: activeOrders.filter(o => o.id !== orderId),
-        items: activeItems
-      },
-      false // Don't revalidate yet - we'll do it manually after the action completes
-    )
-    
-    // Execute server action in background
+    // Execute server action first
     try {
       const result = await markOrderCompleted(orderId)
       
       if (result.error) {
-        // Rollback optimistic update on error
-        mutateActive()
         toast.error('Fehler beim Archivieren der Bestellung')
         setCompletingOrderId(null)
         return
       }
       
-      // Success - trigger both active and archive to refresh
-      mutateActive()
+      // Success - use updater function to always work with latest data (prevents race conditions)
+      mutateActive(
+        (currentData) => {
+          if (!currentData) return currentData
+          
+          const filteredOrders = currentData.orders.filter(o => o.id !== orderId)
+          const filteredItems = { ...currentData.items }
+          delete filteredItems[orderId]
+          
+          return {
+            orders: filteredOrders,
+            items: filteredItems
+          }
+        },
+        false // Don't revalidate - the data is already correct
+      )
+      
+      // Also refresh archive tab in case user switches to it
       mutateArchive()
+      
       toast.success('Bestellung erfolgreich archiviert')
       setCompletingOrderId(null)
     } catch (error) {
-      // Rollback optimistic update on exception
-      mutateActive()
       toast.error('Fehler beim Archivieren der Bestellung')
       setCompletingOrderId(null)
     }
