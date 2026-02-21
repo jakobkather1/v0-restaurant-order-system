@@ -186,8 +186,7 @@ export function OrdersTab({ orders: initialOrders, restaurantId }: OrdersTabProp
         return
       }
       
-      // Remove from tracking sets immediately to prevent redetection
-      previousOrderIds.current.delete(orderId)
+      // Remove from unprinted set to stop alarm
       unprintedOrderIds.current.delete(orderId)
       
       // Stop alarm if no more unprinted orders
@@ -195,18 +194,18 @@ export function OrdersTab({ orders: initialOrders, restaurantId }: OrdersTabProp
         stopAlarm()
       }
       
-      // Success - use updater function to always work with latest data (prevents race conditions)
+      // Success - mark order as completed in UI
       mutateActive(
         (currentData) => {
           if (!currentData) return currentData
           
-          const filteredOrders = currentData.orders.filter(o => o.id !== orderId)
-          const filteredItems = { ...currentData.items }
-          delete filteredItems[orderId]
+          const updatedOrders = currentData.orders.map(o => 
+            o.id === orderId ? { ...o, is_completed: true, status: 'completed' } : o
+          )
           
           return {
-            orders: filteredOrders,
-            items: filteredItems
+            orders: updatedOrders,
+            items: currentData.items
           }
         },
         {
@@ -215,10 +214,7 @@ export function OrdersTab({ orders: initialOrders, restaurantId }: OrdersTabProp
         }
       )
       
-      // Also refresh archive tab in case user switches to it
-      mutateArchive()
-      
-      toast.success('Bestellung erfolgreich archiviert')
+      toast.success('Bestellung erfolgreich erledigt')
       setCompletingOrderId(null)
     } catch (error) {
       toast.error('Fehler beim Archivieren der Bestellung')
@@ -638,14 +634,16 @@ export function OrdersTab({ orders: initialOrders, restaurantId }: OrdersTabProp
           {orders.map((order) => {
             const items = orderItems[order.id] || []
             const isPickup = order.order_type === "pickup"
-            const isArchived = viewMode === "archive"
+            const isCompleted = order.is_completed === true
             const isCancelled = order.status === "cancelled" || order.is_cancelled
             return (
               <Card
                 key={order.id}
                 data-order-id={order.id}
                 className={`${
-                  order.order_type === "delivery"
+                  isCompleted
+                    ? "bg-red-50 border-l-4 border-l-red-400"
+                    : order.order_type === "delivery"
                     ? "border-l-4 border-l-blue-500"
                     : order.order_type === "pickup"
                       ? "border-l-4 border-l-green-500"

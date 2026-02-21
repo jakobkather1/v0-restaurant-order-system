@@ -373,9 +373,8 @@ export async function getActiveOrders(restaurantId: number) {
       FROM orders o
       LEFT JOIN delivery_zones dz ON o.delivery_zone_id = dz.id
       WHERE o.restaurant_id = ${restaurantId} 
-        AND o.is_completed = false 
         AND (o.is_cancelled = false OR o.is_cancelled IS NULL)
-      ORDER BY o.created_at DESC
+      ORDER BY o.is_completed ASC, o.created_at DESC
     `
   }, [])
 }
