@@ -39,12 +39,55 @@ export function OrdersTab({ orders: initialOrders, restaurantId }: OrdersTabProp
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
   const [completingOrderId, setCompletingOrderId] = useState<number | null>(null)
   
+  // Track previous order IDs to detect new orders
+  const previousOrderIds = useRef<Set<number>>(new Set(initialOrders.map(o => o.id)))
+  
   // Sunmi Print Integration
   const { print: printToSunmi, isSunmiAvailable, checkSunmiService } = useSunmiPrint()
   
   useEffect(() => {
     checkSunmiService()
   }, [checkSunmiService])
+  
+  // Function to play notification sound using Web Audio API
+  const playNotificationSound = useCallback(() => {
+    if (typeof window === 'undefined') return
+    
+    try {
+      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
+      
+      // Create a pleasant notification sound (two-tone beep)
+      const oscillator1 = audioContext.createOscillator()
+      const oscillator2 = audioContext.createOscillator()
+      const gainNode = audioContext.createGain()
+      
+      oscillator1.connect(gainNode)
+      oscillator2.connect(gainNode)
+      gainNode.connect(audioContext.destination)
+      
+      // First tone: 800Hz
+      oscillator1.frequency.value = 800
+      oscillator1.type = 'sine'
+      
+      // Second tone: 1000Hz (creates a pleasant harmony)
+      oscillator2.frequency.value = 1000
+      oscillator2.type = 'sine'
+      
+      // Volume envelope: quick fade in and out
+      gainNode.gain.setValueAtTime(0, audioContext.currentTime)
+      gainNode.gain.linearRampToValueAtTime(0.3, audioContext.currentTime + 0.05)
+      gainNode.gain.linearRampToValueAtTime(0.3, audioContext.currentTime + 0.15)
+      gainNode.gain.linearRampToValueAtTime(0, audioContext.currentTime + 0.3)
+      
+      // Play the sound
+      oscillator1.start(audioContext.currentTime)
+      oscillator2.start(audioContext.currentTime)
+      oscillator1.stop(audioContext.currentTime + 0.3)
+      oscillator2.stop(audioContext.currentTime + 0.3)
+    } catch (error) {
+      console.warn('[v0] Audio playback failed:', error)
+    }
+  }, [])
 
   const { data: activeData, mutate: mutateActive } = useSWR(`/api/orders?restaurantId=${restaurantId}`, fetcher, {
     fallbackData: { orders: initialOrders, items: {} },
@@ -80,6 +123,22 @@ export function OrdersTab({ orders: initialOrders, restaurantId }: OrdersTabProp
   const mutate = viewMode === "active" ? mutateActive : mutateArchive
 
   const [estimatedTimes, setEstimatedTimes] = useState<Record<number, string>>({})
+  
+  // Detect new orders and play notification sound
+  useEffect(() => {
+    if (viewMode !== "active") return
+    
+    const currentOrderIds = new Set(activeOrders.map(o => o.id))
+    const newOrders = activeOrders.filter(order => !previousOrderIds.current.has(order.id))
+    
+    if (newOrders.length > 0) {
+      // Play notification sound for new orders
+      playNotificationSound()
+    }
+    
+    // Update tracked order IDs
+    previousOrderIds.current = currentOrderIds
+  }, [activeOrders, viewMode, playNotificationSound])
 
   async function handleComplete(orderId: number) {
     // Set loading state for this specific order
