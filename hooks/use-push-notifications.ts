@@ -40,11 +40,17 @@ export function usePushNotifications(restaurantId: number) {
     setIsSupported(supported)
 
     if (supported) {
-      setPermission(Notification.permission)
-      console.log("[v0] Initial notification permission:", Notification.permission)
+      try {
+        setPermission(Notification.permission)
+        console.log("[v0] Initial notification permission:", Notification.permission)
 
-      // Check if already subscribed
-      checkSubscription()
+        // Check if already subscribed
+        checkSubscription()
+      } catch (error) {
+        console.warn("[v0] Push notifications blocked by iframe/browser security:", error)
+        setIsSupported(false)
+        setPermission("denied")
+      }
     }
   }, [])
 
