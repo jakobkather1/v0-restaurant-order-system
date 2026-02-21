@@ -93,6 +93,7 @@ export function OrdersTab({ orders: initialOrders, restaurantId }: OrdersTabProp
   
   // Function to start continuous alarm
   const startAlarm = useCallback(() => {
+    console.log('[v0] Starting alarm')
     // Stop any existing alarm first
     if (alarmIntervalRef.current) {
       clearInterval(alarmIntervalRef.current)
@@ -103,12 +104,14 @@ export function OrdersTab({ orders: initialOrders, restaurantId }: OrdersTabProp
     
     // Then repeat every 2 seconds
     alarmIntervalRef.current = setInterval(() => {
+      console.log('[v0] Playing alarm beep')
       playBeep()
     }, 2000)
   }, [playBeep])
   
   // Function to stop alarm
   const stopAlarm = useCallback(() => {
+    console.log('[v0] Stopping alarm')
     if (alarmIntervalRef.current) {
       clearInterval(alarmIntervalRef.current)
       alarmIntervalRef.current = null
@@ -164,7 +167,16 @@ export function OrdersTab({ orders: initialOrders, restaurantId }: OrdersTabProp
     const currentOrderIds = new Set(activeOrders.map(o => o.id))
     const newOrders = activeOrders.filter(order => !previousOrderIds.current.has(order.id))
     
+    console.log('[v0] Order detection:', {
+      activeOrdersCount: activeOrders.length,
+      previousCount: previousOrderIds.current.size,
+      newOrdersCount: newOrders.length,
+      newOrderIds: newOrders.map(o => o.id),
+      unprintedCount: unprintedOrderIds.current.size
+    })
+    
     if (newOrders.length > 0) {
+      console.log('[v0] New orders detected! Adding to unprinted set and starting alarm')
       // Add new orders to unprinted set
       newOrders.forEach(order => {
         unprintedOrderIds.current.add(order.id)
@@ -271,8 +283,10 @@ export function OrdersTab({ orders: initialOrders, restaurantId }: OrdersTabProp
   }
 
   async function printOrder(order: Order, items: OrderItem[]) {
+    console.log('[v0] Print button clicked for order:', order.id)
     // Mark order as printed and stop alarm if no more unprinted orders
     unprintedOrderIds.current.delete(order.id)
+    console.log('[v0] Remaining unprinted orders:', unprintedOrderIds.current.size)
     if (unprintedOrderIds.current.size === 0) {
       stopAlarm()
     }
