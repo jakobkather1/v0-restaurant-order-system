@@ -209,35 +209,55 @@ export async function verifyPassword(password: string, hash: string) {
 
 export async function getRestaurantAdminSession() {
   try {
-    const cookieStore = await cookies()
-    const session = cookieStore.get("restaurant_admin_session")
-    if (!session?.value) return null
-    
-    return JSON.parse(session.value) as { restaurantId: number }
-  } catch {
+  const cookieStore = await cookies()
+  const session = cookieStore.get("restaurant_admin_session")
+  
+  console.log("[v0] getRestaurantAdminSession - Cookie value:", session?.value ? "present" : "missing")
+  
+  if (!session?.value) {
+    console.log("[v0] getRestaurantAdminSession - No session cookie found")
     return null
   }
-}
+  
+  const parsed = JSON.parse(session.value) as { restaurantId: number }
+  console.log("[v0] getRestaurantAdminSession - Session found for restaurant:", parsed.restaurantId)
+  return parsed
+  } catch (error) {
+  console.error("[v0] getRestaurantAdminSession - Error:", error)
+  return null
+  }
+  }
 
 export async function setRestaurantAdminSession(restaurantId: number) {
   try {
-    console.log("[v0] setRestaurantAdminSession - Setting session for restaurant:", restaurantId)
-    const cookieStore = await cookies()
-    const sessionData = JSON.stringify({ restaurantId })
-    
-    cookieStore.set("restaurant_admin_session", sessionData, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax", // "lax" allows cookie to be sent on same-site redirects (required for server-side redirect after login)
-      maxAge: 60 * 60 * 24, // 24 hours
-      path: "/",
-    })
-    
-    console.log("[v0] setRestaurantAdminSession - Session cookie set successfully")
+  console.log("[v0] setRestaurantAdminSession - Setting session for restaurant:", restaurantId)
+  const cookieStore = await cookies()
+  const sessionData = JSON.stringify({ restaurantId })
+  
+  // In v0 preview, we need secure: false because the preview runs over HTTP
+  // In production with custom domain and HTTPS, secure should be true
+  const isProduction = process.env.NODE_ENV === "production"
+  const isVercelProduction = process.env.VERCEL_ENV === "production"
+  
+  console.log("[v0] setRestaurantAdminSession - Environment:", {
+    NODE_ENV: process.env.NODE_ENV,
+    VERCEL_ENV: process.env.VERCEL_ENV,
+    secure: isProduction && isVercelProduction
+  })
+  
+  cookieStore.set("restaurant_admin_session", sessionData, {
+    httpOnly: true,
+    secure: isProduction && isVercelProduction, // Only secure in actual production
+    sameSite: "lax", // "lax" allows cookie to be sent on same-site redirects
+    maxAge: 60 * 60 * 24, // 24 hours
+    path: "/",
+  })
+  
+  console.log("[v0] setRestaurantAdminSession - Session cookie set successfully")
   } catch (error) {
-    console.error("[v0] setRestaurantAdminSession - Error:", error)
+  console.error("[v0] setRestaurantAdminSession - Error:", error)
   }
-}
+  }
 
 export async function clearRestaurantAdminSession() {
   try {
