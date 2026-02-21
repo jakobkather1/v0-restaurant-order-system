@@ -4,12 +4,12 @@ import { markOrderCompleted, updateOrderStatus, setOrderEstimatedTime } from "@/
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Check, Clock, Phone, MapPin, Printer, RefreshCw, Timer, Truck, Store, Archive, Ban } from "lucide-react"
+import { Check, Clock, Phone, MapPin, Printer, RefreshCw, Timer, Truck, Store, Ban } from "lucide-react"
 import type { Order, OrderItem } from "@/lib/types"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
 import { useState, useEffect, useCallback, useRef } from "react"
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+
 import { CancelOrderDialog } from "@/components/admin/cancel-order-dialog"
 import { useSunmiPrint } from "@/hooks/use-sunmi-print"
 import { toast } from "sonner"
@@ -34,7 +34,6 @@ const fetcher = async (url: string) => {
 }
 
 export function OrdersTab({ orders: initialOrders, restaurantId }: OrdersTabProps) {
-  const [viewMode, setViewMode] = useState<"active" | "archive">("active")
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false)
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
   const [completingOrderId, setCompletingOrderId] = useState<number | null>(null)
@@ -138,37 +137,18 @@ export function OrdersTab({ orders: initialOrders, restaurantId }: OrdersTabProp
     },
   })
 
-  const { data: archiveData, mutate: mutateArchive } = useSWR(
-    viewMode === "archive" ? `/api/orders/archive?restaurantId=${restaurantId}` : null,
-    fetcher,
-    {
-      fallbackData: { orders: [], items: {} },
-      onError: (error) => {
-        console.warn('[v0] Archive SWR fetch error:', error)
-      },
-    },
-  )
-
-  const activeOrders = activeData?.orders || initialOrders
-  const archiveOrders = archiveData?.orders || []
-  const activeItems = activeData?.items || {}
-  const archiveItems = archiveData?.items || {}
-
-  const orders = viewMode === "active" ? activeOrders : archiveOrders
-  const orderItems = viewMode === "active" ? activeItems : archiveItems
-  const mutate = viewMode === "active" ? mutateActive : mutateArchive
+  const orders = activeData?.orders || initialOrders
+  const orderItems = activeData?.items || {}
 
   const [estimatedTimes, setEstimatedTimes] = useState<Record<number, string>>({})
   
   // Detect new orders and start alarm
   useEffect(() => {
-    if (viewMode !== "active") return
-    
-    const currentOrderIds = new Set(activeOrders.map(o => o.id))
-    const newOrders = activeOrders.filter(order => !previousOrderIds.current.has(order.id))
+    const currentOrderIds = new Set(orders.map(o => o.id))
+    const newOrders = orders.filter(order => !previousOrderIds.current.has(order.id))
     
     console.log('[v0] Order detection:', {
-      activeOrdersCount: activeOrders.length,
+      ordersCount: orders.length,
       previousCount: previousOrderIds.current.size,
       newOrdersCount: newOrders.length,
       newOrderIds: newOrders.map(o => o.id),
@@ -190,7 +170,7 @@ export function OrdersTab({ orders: initialOrders, restaurantId }: OrdersTabProp
     
     // Update tracked order IDs
     previousOrderIds.current = currentOrderIds
-  }, [activeOrders, viewMode, startAlarm])
+  }, [orders, startAlarm])
 
   async function handleComplete(orderId: number) {
     // Set loading state for this specific order
@@ -806,97 +786,10 @@ export function OrdersTab({ orders: initialOrders, restaurantId }: OrdersTabProp
                           Online gezahlt
                         </Badge>
                       )}
-                    </div>
-                  </div>
-
-                  {!isArchived && !isCancelled && (
-                    <>
-                      <div className="flex flex-col gap-2 pt-3 border-t">
-                        <Button 
-                          variant="outline" 
-                          className="w-full justify-start"
-                          onClick={() => {
-                            // Print order - checks Sunmi first, falls back to browser print if unavailable
-                            printOrder(order, items)
-                          }}
-                        >
-                          <Printer className="mr-2 h-4 w-4" />
-                          Drucken
-                        </Button>
-                        <Button 
-                          variant="outline" 
-                          className="w-full justify-start"
-                          onClick={() => handleComplete(order.id)}
-                          disabled={completingOrderId === order.id}
-                        >
-                          <Check className="mr-2 h-4 w-4" />
-                          {completingOrderId === order.id ? "Wird archiviert..." : "Erledigt"}
-                        </Button>
-                        <Button 
-                          variant="outline" 
-                          className="w-full justify-start text-destructive hover:text-destructive bg-transparent"
-                          onClick={() => {
-                            setSelectedOrder(order)
-                            setCancelDialogOpen(true)
-                          }}
-                        >
-                          <Ban className="mr-2 h-4 w-4" />
-                          Stornieren
-                        </Button>
-                      </div>
-                    </>
-                  )}
-
-                  {!isArchived && isCancelled && (
-                    <div className="flex gap-2 pt-3 border-t">
-                      <Button 
-                        variant="outline" 
-                        className="flex-1 bg-transparent"
-                        onClick={() => printOrder(order, items)}
-                      >
-                        <Printer className="mr-2 h-4 w-4" />
-                        Drucken
-                      </Button>
-                    </div>
-                  )}
-
-                  {isArchived && (
-                    <div className="flex gap-2 pt-2">
-                      <Button
-                        variant="outline"
-                        className="flex-1 bg-transparent"
-                        onClick={() => printOrder(order, items)}
-                      >
-                        <Printer className="mr-2 h-4 w-4" />
-                        Drucken
-                      </Button>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            )
-          })}
+              </div>
+            </div>
+          </div>
         </div>
-      )}
-
-      {selectedOrder && (
-        <CancelOrderDialog
-          open={cancelDialogOpen}
-          onOpenChange={setCancelDialogOpen}
-          order={{
-            id: selectedOrder.id,
-            order_number: selectedOrder.id.toString(),
-            total_price: Number(selectedOrder.total),
-            payment_method: selectedOrder.payment_method || "cash",
-            stripe_payment_intent_id: selectedOrder.stripe_payment_intent_id,
-          }}
-          onSuccess={() => {
-            // Update both active and archive views to reflect the cancellation
-            mutateActive()
-            mutateArchive()
-          }}
-        />
-      )}
-    </div>
-  )
-}
+      </>
+    )
+  }
