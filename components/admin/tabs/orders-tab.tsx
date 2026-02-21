@@ -104,8 +104,6 @@ export function OrdersTab({ orders: initialOrders, restaurantId }: OrdersTabProp
     const newOrders = activeOrders.filter(order => !previousOrderIds.current.has(order.id))
     
     if (newOrders.length > 0) {
-      console.log('[v0] New orders detected via polling:', newOrders.length)
-      
       newOrders.forEach(order => {
         // Mark as new for highlighting
         setNewOrderIds(prev => new Set([...prev, order.id]))
@@ -144,8 +142,6 @@ export function OrdersTab({ orders: initialOrders, restaurantId }: OrdersTabProp
   const isRealtimeConnected = false
 
   async function handleComplete(orderId: number) {
-    console.log('[v0] handleComplete - Starting for order:', orderId)
-    
     // Set loading state for this specific order
     setCompletingOrderId(orderId)
     
@@ -161,10 +157,8 @@ export function OrdersTab({ orders: initialOrders, restaurantId }: OrdersTabProp
     // Execute server action in background
     try {
       const result = await markOrderCompleted(orderId)
-      console.log('[v0] handleComplete - Server action completed:', result)
       
       if (result.error) {
-        console.error('[v0] handleComplete - Error:', result.error)
         // Rollback optimistic update on error
         mutateActive()
         toast.error('Fehler beim Archivieren der Bestellung')
@@ -178,7 +172,6 @@ export function OrdersTab({ orders: initialOrders, restaurantId }: OrdersTabProp
       toast.success('Bestellung erfolgreich archiviert')
       setCompletingOrderId(null)
     } catch (error) {
-      console.error('[v0] handleComplete - Exception:', error)
       // Rollback optimistic update on exception
       mutateActive()
       toast.error('Fehler beim Archivieren der Bestellung')
@@ -223,14 +216,8 @@ export function OrdersTab({ orders: initialOrders, restaurantId }: OrdersTabProp
   }
 
   async function printOrder(order: Order, items: OrderItem[]) {
-    console.log('[v0] === PRINT STARTED ===')
-    console.log('[v0] Order:', order.order_number || order.id)
-    console.log('[v0] Sunmi available:', isSunmiAvailable)
-    
     // Try Sunmi first if available
     if (isSunmiAvailable) {
-      console.log('[v0] Attempting to print to Sunmi device...')
-      
       const printData = {
         restaurantId: String(restaurantId),
         orderNumber: String(order.order_number || order.id),
@@ -269,30 +256,24 @@ export function OrdersTab({ orders: initialOrders, restaurantId }: OrdersTabProp
       const result = await printToSunmi(printData)
       
       if (result.success) {
-        console.log('[v0] Printed successfully to Sunmi device')
         toast.success('Bon wurde gedruckt')
         return
       } else {
-        console.log('[v0] Sunmi print failed, falling back to browser print')
         toast.error('Sunmi-Druck fehlgeschlagen')
       }
     }
     
     // Fallback to browser print
-    console.log('[v0] Falling back to browser print...')
     browserPrint(order, items)
   }
 
   function browserPrint(order: Order, items: OrderItem[]) {
-    console.log('[v0] Opening print window...')
     const printWindow = window.open("", "_blank")
     if (!printWindow) {
-      console.log('[v0] ERROR: Popup blocked by browser')
       alert("Popup wurde blockiert. Bitte erlauben Sie Popups für diese Seite.")
       toast.error("Popup wurde blockiert")
       return
     }
-    console.log('[v0] Print window opened successfully')
 
     const orderTypeLabel = order.order_type === "pickup" ? "ABHOLUNG" : "LIEFERUNG"
 
@@ -516,10 +497,8 @@ export function OrdersTab({ orders: initialOrders, restaurantId }: OrdersTabProp
         </body>
       </html>
     `
-    console.log('[v0] Writing HTML to print window')
     printWindow.document.write(html)
     printWindow.document.close()
-    console.log('[v0] Print window ready - onload will trigger print dialog')
     // Print is triggered by onload event in HTML
   }
 

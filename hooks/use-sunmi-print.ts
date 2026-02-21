@@ -53,9 +53,8 @@ export function useSunmiPrint() {
       const response = await fetch(`${SUNMI_SERVICE_URL}/health`, {
         method: 'GET',
         signal: AbortSignal.timeout(2000),
-      }).catch((fetchError) => {
+      }).catch(() => {
         // Silently catch fetch errors (CORS, Mixed Content, Network errors)
-        console.log('[v0] Sunmi service fetch blocked (expected in preview):', fetchError.message)
         return null
       })
       
@@ -68,7 +67,6 @@ export function useSunmiPrint() {
       }
     } catch (error) {
       // Catch any unexpected errors to prevent React crash
-      console.log('[v0] Sunmi service check failed silently:', error instanceof Error ? error.message : 'Unknown error')
       setIsAvailable(false)
     } finally {
       isChecking.current = false
