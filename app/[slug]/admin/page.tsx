@@ -7,13 +7,9 @@ export default async function AdminLoginPage({ params }: { params: Promise<{ slu
   const { slug } = await params
   const decodedSlug = decodeURIComponent(slug)
   
-  console.log("[v0] Admin page - Original slug:", slug)
-  console.log("[v0] Admin page - Decoded slug:", decodedSlug)
-  
   let restaurant
   try {
     restaurant = await getRestaurantByIdentifier(decodedSlug)
-    console.log("[v0] Admin page - Restaurant found:", restaurant ? restaurant.name : "NOT FOUND")
   } catch (error) {
     console.error("[v0] Admin page - Error fetching restaurant:", error)
     return (
@@ -35,24 +31,14 @@ export default async function AdminLoginPage({ params }: { params: Promise<{ slu
   }
 
   if (!restaurant) {
-    console.log("[v0] Admin page - Restaurant not found for identifier:", decodedSlug)
     notFound()
   }
 
   const session = await getRestaurantAdminSession()
-  console.log("[v0] Admin page - Session check:", { 
-    hasSession: !!session, 
-    sessionRestaurantId: session?.restaurantId,
-    restaurantId: restaurant.id,
-    matches: session?.restaurantId === restaurant.id 
-  })
   
   if (session?.restaurantId === restaurant.id) {
-    console.log("[v0] Admin page - Redirecting authenticated user to dashboard")
     redirect(`/${slug}/admin/dashboard`)
   }
-  
-  console.log("[v0] Admin page - No valid session, showing login form")
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-muted/30 p-4">

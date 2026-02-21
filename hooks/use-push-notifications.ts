@@ -23,28 +23,37 @@ export function usePushNotifications(restaurantId: number) {
       userAgent: navigator.userAgent
     })
 
-    // Check basic support
-    let supported =
-      typeof window !== "undefined" &&
-      "Notification" in window &&
-      "serviceWorker" in navigator &&
-      "PushManager" in window
-
-    // iOS Chrome doesn't support push notifications
-    if (isIOS && isChrome) {
-      console.log("[v0] iOS Chrome detected - Push notifications not supported")
+    // Check basic support - wrap in try-catch for iframe security
+    let supported = false
+    try {
+      supported =
+        typeof window !== "undefined" &&
+        "Notification" in window &&
+        "serviceWorker" in navigator &&
+        "PushManager" in window
+    } catch (error) {
+      console.warn("[v0] Push API check blocked by iframe security:", error)
       supported = false
     }
 
-    console.log("[v0] Push notifications supported:", supported)
+    // iOS Chrome doesn't support push notifications
+    if (isIOS && isChrome) {
+      supported = false
+    }
+
     setIsSupported(supported)
 
     if (supported) {
-      setPermission(Notification.permission)
-      console.log("[v0] Initial notification permission:", Notification.permission)
+      try {
+        setPermission(Notification.permission)
 
-      // Check if already subscribed
-      checkSubscription()
+        // Check if already subscribed
+        checkSubscription()
+      } catch (error) {
+        console.warn("[v0] Push notifications blocked by iframe/browser security:", error)
+        setIsSupported(false)
+        setPermission("denied")
+      }
     }
   }, [])
 
@@ -54,7 +63,6 @@ export function usePushNotifications(restaurantId: number) {
       if (registration) {
         const subscription = await registration.pushManager.getSubscription()
         setIsSubscribed(!!subscription)
-        console.log("[v0] Already subscribed:", !!subscription)
       }
     } catch (error) {
       console.error("[v0] Error checking subscription:", error)
@@ -75,11 +83,9 @@ export function usePushNotifications(restaurantId: number) {
     }
 
     setIsLoading(true)
-    console.log("[v0] Requesting notification permission...")
 
     try {
       const result = await Notification.requestPermission()
-      console.log("[v0] Notification permission result:", result)
       setPermission(result)
 
       if (result === "granted") {

@@ -152,8 +152,8 @@ export async function setSuperAdminSession(userId: number, username: string) {
       }),
       {
         httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
+        secure: true, // Muss für v0 iframes zwingend true sein
+        sameSite: "none", // Erlaubt das Setzen des Cookies im Third-Party-Kontext
         maxAge: 60 * 60 * 24, // 24 hours
         path: "/",
       },
@@ -209,35 +209,37 @@ export async function verifyPassword(password: string, hash: string) {
 
 export async function getRestaurantAdminSession() {
   try {
-    const cookieStore = await cookies()
-    const session = cookieStore.get("restaurant_admin_session")
-    if (!session?.value) return null
-    
-    return JSON.parse(session.value) as { restaurantId: number }
-  } catch {
+  const cookieStore = await cookies()
+  const session = cookieStore.get("restaurant_admin_session")
+  
+  if (!session?.value) {
     return null
   }
-}
+  
+  const parsed = JSON.parse(session.value) as { restaurantId: number }
+  return parsed
+  } catch (error) {
+  console.error("[v0] getRestaurantAdminSession - Error:", error)
+  return null
+  }
+  }
 
 export async function setRestaurantAdminSession(restaurantId: number) {
   try {
-    console.log("[v0] setRestaurantAdminSession - Setting session for restaurant:", restaurantId)
-    const cookieStore = await cookies()
-    const sessionData = JSON.stringify({ restaurantId })
-    
-    cookieStore.set("restaurant_admin_session", sessionData, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax", // "lax" allows cookie to be sent on same-site redirects (required for server-side redirect after login)
-      maxAge: 60 * 60 * 24, // 24 hours
-      path: "/",
-    })
-    
-    console.log("[v0] setRestaurantAdminSession - Session cookie set successfully")
+  const cookieStore = await cookies()
+  const sessionData = JSON.stringify({ restaurantId })
+  
+  cookieStore.set("restaurant_admin_session", sessionData, {
+    httpOnly: true,
+    secure: true, // Muss für v0 iframes zwingend true sein
+    sameSite: "none", // Erlaubt das Setzen des Cookies im Third-Party-Kontext
+    maxAge: 60 * 60 * 24, // 24 hours
+    path: "/",
+  })
   } catch (error) {
-    console.error("[v0] setRestaurantAdminSession - Error:", error)
+  console.error("[v0] setRestaurantAdminSession - Error:", error)
   }
-}
+  }
 
 export async function clearRestaurantAdminSession() {
   try {
