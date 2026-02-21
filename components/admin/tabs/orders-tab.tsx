@@ -194,6 +194,15 @@ export function OrdersTab({ orders: initialOrders, restaurantId }: OrdersTabProp
         return
       }
       
+      // Remove from tracking sets immediately to prevent redetection
+      previousOrderIds.current.delete(orderId)
+      unprintedOrderIds.current.delete(orderId)
+      
+      // Stop alarm if no more unprinted orders
+      if (unprintedOrderIds.current.size === 0) {
+        stopAlarm()
+      }
+      
       // Success - use updater function to always work with latest data (prevents race conditions)
       mutateActive(
         (currentData) => {
@@ -208,7 +217,10 @@ export function OrdersTab({ orders: initialOrders, restaurantId }: OrdersTabProp
             items: filteredItems
           }
         },
-        false // Don't revalidate - the data is already correct
+        {
+          revalidate: false, // Don't fetch from server - trust our optimistic update
+          populateCache: true, // Keep the optimistic data in cache
+        }
       )
       
       // Also refresh archive tab in case user switches to it
