@@ -45,10 +45,11 @@ async function withRetry<T>(
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { slug: string; id: string } }
+  { params }: { params: Promise<{ slug: string; id: string }> }
 ) {
   try {
-    const itemId = parseInt(params.id)
+    const { id } = await params
+    const itemId = parseInt(id)
 
     if (isNaN(itemId)) {
       return NextResponse.json({ error: "Invalid item ID" }, { status: 400 })
