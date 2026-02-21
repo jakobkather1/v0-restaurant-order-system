@@ -31,7 +31,12 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    return NextResponse.json({ orders, items })
+    const response = NextResponse.json({ orders, items })
+    
+    // Add cache headers: Cache for 3 seconds, allow stale for 10 seconds while revalidating
+    response.headers.set('Cache-Control', 's-maxage=3, stale-while-revalidate=10')
+    
+    return response
   } catch (error) {
     // Return empty data on error instead of crashing
     console.error("Orders API error:", (error as Error).message)

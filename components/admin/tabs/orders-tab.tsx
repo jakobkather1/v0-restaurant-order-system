@@ -39,11 +39,11 @@ export function OrdersTab({ orders: initialOrders, restaurantId }: OrdersTabProp
 
   const { data: activeData, mutate: mutateActive } = useSWR(`/api/orders?restaurantId=${restaurantId}`, fetcher, {
     fallbackData: { orders: initialOrders, items: {} },
-    refreshInterval: 2000, // Poll every 2 seconds for near-realtime updates (serverless-compatible)
+    refreshInterval: 5000, // Poll every 5 seconds (optimized: 60% fewer requests, still responsive)
     refreshWhenHidden: false, // Don't poll when tab is hidden to save resources
     refreshWhenOffline: false, // Don't poll when offline
     revalidateOnFocus: true, // Immediately check when user returns to tab
-    dedupingInterval: 1000, // Prevent duplicate requests within 1 second
+    dedupingInterval: 3000, // Prevent duplicate requests within 3 seconds
     compare: (a, b) => {
       // Custom comparator to detect new orders more reliably
       if (!a || !b) return false
