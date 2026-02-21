@@ -31,30 +31,32 @@ export function AdminLoginForm({ restaurant, isCustomDomain }: AdminLoginFormPro
     console.log("[v0] LoginForm - Submitting login for restaurant:", restaurant.id)
 
     try {
+      // Server action now handles redirect internally, so we only get here if there's an error
       const result = await loginRestaurantAdmin(restaurant.id, password, restaurant.slug, isCustomDomain)
       
-      console.log("[v0] LoginForm - Login result:", result)
+      console.log("[v0] LoginForm - Got result (error case):", result)
       
-      if (result.success && result.redirectUrl) {
-        console.log("[v0] LoginForm - Login successful, redirecting to:", result.redirectUrl)
-        // Add small delay to ensure cookie is set
-        await new Promise(resolve => setTimeout(resolve, 100))
-        window.location.href = result.redirectUrl
-        return
-      }
-      
-      if (result.error) {
+      // If we got here, it means there was an error (redirect() throws, so success doesn't return)
+      if (result?.error) {
         console.log("[v0] LoginForm - Login error:", result.error)
         setError(result.error)
         setLoading(false)
         return
       }
       
-      console.log("[v0] LoginForm - Unexpected result")
+      // This shouldn't happen
+      console.log("[v0] LoginForm - Unexpected: no error but no redirect")
       setError("Unerwarteter Fehler beim Login")
       setLoading(false)
     } catch (error: any) {
-      console.error("[v0] LoginForm - Exception:", error)
+      // Next.js redirect() throws a special error - this is expected for successful login
+      if (error?.digest?.startsWith('NEXT_REDIRECT')) {
+        console.log("[v0] LoginForm - Redirect happening (success)")
+        // Keep loading state, redirect is in progress
+        return
+      }
+      
+      console.error("[v0] LoginForm - Unexpected error:", error)
       setError(error?.message || "Login fehlgeschlagen")
       setLoading(false)
     }
