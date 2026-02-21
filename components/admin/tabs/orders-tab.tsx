@@ -35,7 +35,7 @@ export function OrdersTab({ orders: initialOrders, restaurantId }: OrdersTabProp
   
   useEffect(() => {
     checkSunmiService()
-  }, [])
+  }, [checkSunmiService])
 
   const { data: activeData, mutate: mutateActive } = useSWR(`/api/orders?restaurantId=${restaurantId}`, fetcher, {
     fallbackData: { orders: initialOrders, items: {} },
