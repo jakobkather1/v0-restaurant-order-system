@@ -3,7 +3,7 @@
 import type React from "react"
 
 import { useState } from "react"
-import { loginRestaurantAdminCentral } from "@/app/admin/login/actions"
+import { loginRestaurantAdmin } from "@/app/[slug]/admin/actions"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -26,11 +26,10 @@ export function AdminLoginForm({ restaurant, isCustomDomain }: AdminLoginFormPro
     setError(null)
 
     const formData = new FormData(e.currentTarget)
-    const username = formData.get("username") as string
     const password = formData.get("password") as string
 
     try {
-      const result = await loginRestaurantAdminCentral(username, password)
+      const result = await loginRestaurantAdmin(restaurant.id, password, restaurant.slug, isCustomDomain)
       
       if (result.success && result.redirectUrl) {
         window.location.href = result.redirectUrl
@@ -72,17 +71,6 @@ export function AdminLoginForm({ restaurant, isCustomDomain }: AdminLoginFormPro
               {error}
             </div>
           )}
-          <div className="space-y-2">
-            <Label htmlFor="username">Benutzername</Label>
-            <Input 
-              id="username" 
-              name="username" 
-              type="text" 
-              placeholder="Benutzername eingeben" 
-              required 
-              autoComplete="username"
-            />
-          </div>
           <div className="space-y-2">
             <Label htmlFor="password">Passwort</Label>
             <Input 
