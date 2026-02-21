@@ -39,8 +39,10 @@ export function OrdersTab({ orders: initialOrders, restaurantId }: OrdersTabProp
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
   const [completingOrderId, setCompletingOrderId] = useState<number | null>(null)
   
-  // Track previous order IDs to detect new orders
+  // Track previous order IDs to detect new orders and unprinted orders
   const previousOrderIds = useRef<Set<number>>(new Set(initialOrders.map(o => o.id)))
+  const unprintedOrderIds = useRef<Set<number>>(new Set())
+  const alarmIntervalRef = useRef<NodeJS.Timeout | null>(null)
   
   // Sunmi Print Integration
   const { print: printToSunmi, isSunmiAvailable, checkSunmiService } = useSunmiPrint()
@@ -49,8 +51,8 @@ export function OrdersTab({ orders: initialOrders, restaurantId }: OrdersTabProp
     checkSunmiService()
   }, [checkSunmiService])
   
-  // Function to play notification sound using Web Audio API
-  const playNotificationSound = useCallback(() => {
+  // Function to play a single beep
+  const playBeep = useCallback(() => {
     if (typeof window === 'undefined') return
     
     try {
@@ -88,6 +90,37 @@ export function OrdersTab({ orders: initialOrders, restaurantId }: OrdersTabProp
       console.warn('[v0] Audio playback failed:', error)
     }
   }, [])
+  
+  // Function to start continuous alarm
+  const startAlarm = useCallback(() => {
+    // Stop any existing alarm first
+    if (alarmIntervalRef.current) {
+      clearInterval(alarmIntervalRef.current)
+    }
+    
+    // Play first beep immediately
+    playBeep()
+    
+    // Then repeat every 2 seconds
+    alarmIntervalRef.current = setInterval(() => {
+      playBeep()
+    }, 2000)
+  }, [playBeep])
+  
+  // Function to stop alarm
+  const stopAlarm = useCallback(() => {
+    if (alarmIntervalRef.current) {
+      clearInterval(alarmIntervalRef.current)
+      alarmIntervalRef.current = null
+    }
+  }, [])
+  
+  // Cleanup alarm on unmount
+  useEffect(() => {
+    return () => {
+      stopAlarm()
+    }
+  }, [stopAlarm])
 
   const { data: activeData, mutate: mutateActive } = useSWR(`/api/orders?restaurantId=${restaurantId}`, fetcher, {
     fallbackData: { orders: initialOrders, items: {} },
@@ -124,7 +157,7 @@ export function OrdersTab({ orders: initialOrders, restaurantId }: OrdersTabProp
 
   const [estimatedTimes, setEstimatedTimes] = useState<Record<number, string>>({})
   
-  // Detect new orders and play notification sound
+  // Detect new orders and start alarm
   useEffect(() => {
     if (viewMode !== "active") return
     
@@ -132,13 +165,20 @@ export function OrdersTab({ orders: initialOrders, restaurantId }: OrdersTabProp
     const newOrders = activeOrders.filter(order => !previousOrderIds.current.has(order.id))
     
     if (newOrders.length > 0) {
-      // Play notification sound for new orders
-      playNotificationSound()
+      // Add new orders to unprinted set
+      newOrders.forEach(order => {
+        unprintedOrderIds.current.add(order.id)
+      })
+      
+      // Start alarm for unprinted orders
+      if (unprintedOrderIds.current.size > 0) {
+        startAlarm()
+      }
     }
     
     // Update tracked order IDs
     previousOrderIds.current = currentOrderIds
-  }, [activeOrders, viewMode, playNotificationSound])
+  }, [activeOrders, viewMode, startAlarm])
 
   async function handleComplete(orderId: number) {
     // Set loading state for this specific order
@@ -219,6 +259,12 @@ export function OrdersTab({ orders: initialOrders, restaurantId }: OrdersTabProp
   }
 
   async function printOrder(order: Order, items: OrderItem[]) {
+    // Mark order as printed and stop alarm if no more unprinted orders
+    unprintedOrderIds.current.delete(order.id)
+    if (unprintedOrderIds.current.size === 0) {
+      stopAlarm()
+    }
+    
     // Try Sunmi first if available
     if (isSunmiAvailable) {
       const printData = {
