@@ -92,18 +92,21 @@ export function OrdersTab({ orders: initialOrders, restaurantId }: OrdersTabProp
         return
       }
       
-      // Success - immediately update UI optimistically and then revalidate
-      const filteredOrders = activeOrders.filter(o => o.id !== orderId)
-      const filteredItems = { ...activeItems }
-      delete filteredItems[orderId]
-      
-      // Set optimistic data immediately
+      // Success - use updater function to always work with latest data (prevents race conditions)
       mutateActive(
-        {
-          orders: filteredOrders,
-          items: filteredItems
+        (currentData) => {
+          if (!currentData) return currentData
+          
+          const filteredOrders = currentData.orders.filter(o => o.id !== orderId)
+          const filteredItems = { ...currentData.items }
+          delete filteredItems[orderId]
+          
+          return {
+            orders: filteredOrders,
+            items: filteredItems
+          }
         },
-        true // Revalidate from server in background
+        false // Don't revalidate - the data is already correct
       )
       
       // Also refresh archive tab in case user switches to it
