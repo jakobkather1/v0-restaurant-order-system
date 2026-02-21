@@ -12,10 +12,12 @@ self.addEventListener('push', function(event) {
     body: data.body || 'Sie haben eine neue Bestellung erhalten',
     icon: '/icon-192x192.png',
     badge: '/icon-192x192.png',
-    tag: data.tag || 'order-notification',
+    tag: data.tag || `order-${Date.now()}`, // Unique tag for each notification to ensure sound plays
     data: data.data || {},
     requireInteraction: true,
-    vibrate: [200, 100, 200]
+    vibrate: [200, 100, 200],
+    silent: false, // Explicitly enable sound
+    renotify: true // Play sound even if tag is reused
   };
 
   event.waitUntil(
