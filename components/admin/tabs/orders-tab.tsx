@@ -48,8 +48,11 @@ export function OrdersTab({ orders: initialOrders, restaurantId }: OrdersTabProp
 
   const { data: activeData, mutate: mutateActive } = useSWR(`/api/orders?restaurantId=${restaurantId}`, fetcher, {
     fallbackData: { orders: initialOrders, items: {} },
-    revalidateOnFocus: false, // Disable automatic revalidation
-    revalidateOnReconnect: false, // Disable revalidation on reconnect
+    refreshInterval: 10000, // Poll every 10 seconds for new orders
+    refreshWhenHidden: false, // Don't poll when tab is hidden to save resources
+    refreshWhenOffline: false, // Don't poll when offline
+    revalidateOnFocus: true, // Immediately check when user returns to tab
+    dedupingInterval: 5000, // Prevent duplicate requests within 5 seconds
     onError: (error) => {
       // Silently log errors to prevent React crash in iframe
       console.warn('[v0] SWR fetch error:', error)
