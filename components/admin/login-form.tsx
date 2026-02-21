@@ -28,24 +28,33 @@ export function AdminLoginForm({ restaurant, isCustomDomain }: AdminLoginFormPro
     const formData = new FormData(e.currentTarget)
     const password = formData.get("password") as string
 
+    console.log("[v0] LoginForm - Submitting login for restaurant:", restaurant.id)
+
     try {
       const result = await loginRestaurantAdmin(restaurant.id, password, restaurant.slug, isCustomDomain)
       
+      console.log("[v0] LoginForm - Login result:", result)
+      
       if (result.success && result.redirectUrl) {
+        console.log("[v0] LoginForm - Login successful, redirecting to:", result.redirectUrl)
+        // Add small delay to ensure cookie is set
+        await new Promise(resolve => setTimeout(resolve, 100))
         window.location.href = result.redirectUrl
         return
       }
       
       if (result.error) {
+        console.log("[v0] LoginForm - Login error:", result.error)
         setError(result.error)
         setLoading(false)
         return
       }
       
+      console.log("[v0] LoginForm - Unexpected result")
       setError("Unerwarteter Fehler beim Login")
       setLoading(false)
     } catch (error: any) {
-      console.error("[v0] Login error:", error)
+      console.error("[v0] LoginForm - Exception:", error)
       setError(error?.message || "Login fehlgeschlagen")
       setLoading(false)
     }
