@@ -12,7 +12,6 @@ import { useState, useEffect, useCallback } from "react"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { CancelOrderDialog } from "@/components/admin/cancel-order-dialog"
 import { useSunmiPrint } from "@/hooks/use-sunmi-print"
-import { useRealtimeOrders } from "@/hooks/use-realtime-orders"
 import { toast } from "sonner"
 
 interface OrdersTabProps {
@@ -40,11 +39,18 @@ export function OrdersTab({ orders: initialOrders, restaurantId }: OrdersTabProp
 
   const { data: activeData, mutate: mutateActive } = useSWR(`/api/orders?restaurantId=${restaurantId}`, fetcher, {
     fallbackData: { orders: initialOrders, items: {} },
-    refreshInterval: 5000, // Poll every 5 seconds as fallback (ensures updates even if realtime fails)
+    refreshInterval: 2000, // Poll every 2 seconds for near-realtime updates (serverless-compatible)
     refreshWhenHidden: false, // Don't poll when tab is hidden to save resources
     refreshWhenOffline: false, // Don't poll when offline
     revalidateOnFocus: true, // Immediately check when user returns to tab
-    dedupingInterval: 2000, // Prevent duplicate requests within 2 seconds
+    dedupingInterval: 1000, // Prevent duplicate requests within 1 second
+    compare: (a, b) => {
+      // Custom comparator to detect new orders more reliably
+      if (!a || !b) return false
+      const aIds = new Set(a.orders?.map((o: Order) => o.id) || [])
+      const bIds = new Set(b.orders?.map((o: Order) => o.id) || [])
+      return aIds.size === bIds.size && [...aIds].every(id => bIds.has(id))
+    }
   })
 
   const { data: archiveData, mutate: mutateArchive } = useSWR(
@@ -66,50 +72,52 @@ export function OrdersTab({ orders: initialOrders, restaurantId }: OrdersTabProp
 
   const [estimatedTimes, setEstimatedTimes] = useState<Record<number, string>>({})
 
-  // Handle new orders from realtime connection
-  const handleNewOrder = useCallback((event: any) => {
-    console.log('[v0] Realtime new order received:', event)
+  // Detect new orders via polling comparison (SSE not compatible with Vercel serverless)
+  useEffect(() => {
+    if (viewMode !== "active") return
     
-    // Mark as new for highlighting
-    setNewOrderIds(prev => new Set([...prev, event.order_id]))
+    const currentOrderIds = new Set(activeOrders.map(o => o.id))
+    const newOrders = activeOrders.filter(order => !previousOrderIds.has(order.id))
     
-    // Show toast notification
-    toast.success(
-      `Neue Bestellung eingetroffen!\n#${event.order_number} - ${event.customer_name}`,
-      {
-        duration: 8000,
-        action: {
-          label: 'Anzeigen',
-          onClick: () => {
-            const orderElement = document.querySelector(`[data-order-id="${event.order_id}"]`)
-            orderElement?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    if (newOrders.length > 0) {
+      console.log('[v0] New orders detected via polling:', newOrders.length)
+      
+      newOrders.forEach(order => {
+        // Mark as new for highlighting
+        setNewOrderIds(prev => new Set([...prev, order.id]))
+        
+        // Show toast notification
+        toast.success(
+          `Neue Bestellung eingetroffen!\n#${order.order_number} - ${order.customer_name}`,
+          {
+            duration: 8000,
+            action: {
+              label: 'Anzeigen',
+              onClick: () => {
+                const orderElement = document.querySelector(`[data-order-id="${order.id}"]`)
+                orderElement?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+              }
+            }
           }
-        }
-      }
-    )
-    
-    // Immediately refresh order data
-    mutateActive()
-    
-    // Remove highlighting after 15 seconds
-    setTimeout(() => {
-      setNewOrderIds(prev => {
-        const newSet = new Set(prev)
-        newSet.delete(event.order_id)
-        return newSet
+        )
+        
+        // Remove highlighting after 15 seconds
+        setTimeout(() => {
+          setNewOrderIds(prev => {
+            const newSet = new Set(prev)
+            newSet.delete(order.id)
+            return newSet
+          })
+        }, 15000)
       })
-    }, 15000)
-  }, [mutateActive])
-
-  // Connect to realtime orders (only when viewing active orders)
-  const { isConnected: isRealtimeConnected } = useRealtimeOrders({
-    restaurantId,
-    enabled: viewMode === "active",
-    onNewOrder: handleNewOrder,
-    onError: (error) => {
-      console.error('[v0] Realtime orders error:', error)
     }
-  })
+    
+    // Update previous order IDs
+    setPreviousOrderIds(currentOrderIds)
+  }, [activeOrders, viewMode, previousOrderIds])
+
+  // No realtime connection on Vercel serverless
+  const isRealtimeConnected = false
 
   async function handleComplete(orderId: number) {
     console.log('[v0] handleComplete - Starting for order:', orderId)
