@@ -113,6 +113,15 @@ export function AdminLoginForm({ restaurant, isCustomDomain }: AdminLoginFormPro
             {loading ? "Anmelden..." : "Anmelden"}
           </Button>
         </form>
+        
+        <div className="mt-4 text-center">
+          <a 
+            href="/admin/login" 
+            className="text-sm text-muted-foreground hover:text-foreground transition-colors underline"
+          >
+            Login mit Benutzername
+          </a>
+        </div>
       </CardContent>
     </Card>
   )
