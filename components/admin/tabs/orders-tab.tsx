@@ -12,7 +12,6 @@ import { useState, useEffect, useCallback } from "react"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { CancelOrderDialog } from "@/components/admin/cancel-order-dialog"
 import { useSunmiPrint } from "@/hooks/use-sunmi-print"
-import { useNotificationSound } from "@/hooks/use-notification-sound"
 import { useRealtimeOrders } from "@/hooks/use-realtime-orders"
 import { toast } from "sonner"
 
@@ -34,9 +33,6 @@ export function OrdersTab({ orders: initialOrders, restaurantId }: OrdersTabProp
   
   // Sunmi Print Integration
   const { print: printToSunmi, isSunmiAvailable, checkSunmiService } = useSunmiPrint()
-  
-  // Notification Sound Integration
-  const { playSound: playNotificationSound, unlockAudio, needsUnlock } = useNotificationSound()
   
   useEffect(() => {
     checkSunmiService()
@@ -77,9 +73,6 @@ export function OrdersTab({ orders: initialOrders, restaurantId }: OrdersTabProp
     // Mark as new for highlighting
     setNewOrderIds(prev => new Set([...prev, event.order_id]))
     
-    // Play notification sound
-    playNotificationSound()
-    
     // Show toast notification
     toast.success(
       `Neue Bestellung eingetroffen!\n#${event.order_number} - ${event.customer_name}`,
@@ -106,7 +99,7 @@ export function OrdersTab({ orders: initialOrders, restaurantId }: OrdersTabProp
         return newSet
       })
     }, 15000)
-  }, [playNotificationSound, mutateActive])
+  }, [mutateActive])
 
   // Connect to realtime orders (only when viewing active orders)
   const { isConnected: isRealtimeConnected } = useRealtimeOrders({
@@ -510,33 +503,6 @@ export function OrdersTab({ orders: initialOrders, restaurantId }: OrdersTabProp
 
   return (
     <div className="space-y-4">
-      {/* Audio Unlock Banner */}
-      {needsUnlock && (
-        <div 
-          className="bg-amber-50 border-2 border-amber-300 rounded-lg p-4 cursor-pointer hover:bg-amber-100 transition-colors"
-          onClick={() => {
-            unlockAudio()
-          }}
-        >
-          <div className="flex items-center gap-3">
-            <div className="flex-shrink-0">
-              <svg className="w-6 h-6 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
-              </svg>
-            </div>
-            <div className="flex-1">
-              <h3 className="font-semibold text-amber-900">Audio-Benachrichtigungen aktivieren</h3>
-              <p className="text-sm text-amber-700">Tippen Sie hier, um Ton-Benachrichtigungen für neue Bestellungen zu aktivieren</p>
-            </div>
-            <div className="flex-shrink-0">
-              <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-amber-200 text-amber-800">
-                Jetzt aktivieren
-              </span>
-            </div>
-          </div>
-        </div>
-      )}
-      
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h2 className="text-xl sm:text-2xl md:text-3xl font-bold">Bestellungen</h2>
