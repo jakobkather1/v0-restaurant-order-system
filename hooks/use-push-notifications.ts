@@ -23,12 +23,18 @@ export function usePushNotifications(restaurantId: number) {
       userAgent: navigator.userAgent
     })
 
-    // Check basic support
-    let supported =
-      typeof window !== "undefined" &&
-      "Notification" in window &&
-      "serviceWorker" in navigator &&
-      "PushManager" in window
+    // Check basic support - wrap in try-catch for iframe security
+    let supported = false
+    try {
+      supported =
+        typeof window !== "undefined" &&
+        "Notification" in window &&
+        "serviceWorker" in navigator &&
+        "PushManager" in window
+    } catch (error) {
+      console.warn("[v0] Push API check blocked by iframe security:", error)
+      supported = false
+    }
 
     // iOS Chrome doesn't support push notifications
     if (isIOS && isChrome) {

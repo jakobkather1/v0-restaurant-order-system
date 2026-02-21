@@ -63,8 +63,13 @@ export function OrdersTab({ orders: initialOrders, restaurantId }: OrdersTabProp
     compare: (a, b) => {
       // Custom comparator to detect new orders more reliably
       if (!a || !b) return false
-      const aIds = new Set(a.orders?.map((o: Order) => o.id) || [])
-      const bIds = new Set(b.orders?.map((o: Order) => o.id) || [])
+      // Ensure we have arrays before mapping to prevent TypeError
+      const aOrders = Array.isArray(a.orders) ? a.orders : []
+      const bOrders = Array.isArray(b.orders) ? b.orders : []
+      
+      const aIds = new Set(aOrders.map((o: Order) => o.id))
+      const bIds = new Set(bOrders.map((o: Order) => o.id))
+      
       return aIds.size === bIds.size && [...aIds].every(id => bIds.has(id))
     }
   })
