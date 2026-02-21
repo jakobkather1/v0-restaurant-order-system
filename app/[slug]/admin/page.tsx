@@ -23,12 +23,12 @@ export default async function AdminLoginPage({ params }: { params: Promise<{ slu
           <p className="text-sm text-muted-foreground mb-4">
             Unable to connect to the database. Please try again in a few moments.
           </p>
-          <button 
-            onClick={() => window.location.reload()} 
-            className="px-4 py-2 bg-primary text-white rounded hover:bg-primary/90"
+          <a 
+            href={`/${slug}/admin`}
+            className="inline-block px-4 py-2 bg-primary text-white rounded hover:bg-primary/90"
           >
             Retry
-          </button>
+          </a>
         </div>
       </div>
     )
