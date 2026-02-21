@@ -152,8 +152,8 @@ export async function setSuperAdminSession(userId: number, username: string) {
       }),
       {
         httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
+        secure: true, // Muss für v0 iframes zwingend true sein
+        sameSite: "none", // Erlaubt das Setzen des Cookies im Third-Party-Kontext
         maxAge: 60 * 60 * 24, // 24 hours
         path: "/",
       },
@@ -234,21 +234,10 @@ export async function setRestaurantAdminSession(restaurantId: number) {
   const cookieStore = await cookies()
   const sessionData = JSON.stringify({ restaurantId })
   
-  // In v0 preview, we need secure: false because the preview runs over HTTP
-  // In production with custom domain and HTTPS, secure should be true
-  const isProduction = process.env.NODE_ENV === "production"
-  const isVercelProduction = process.env.VERCEL_ENV === "production"
-  
-  console.log("[v0] setRestaurantAdminSession - Environment:", {
-    NODE_ENV: process.env.NODE_ENV,
-    VERCEL_ENV: process.env.VERCEL_ENV,
-    secure: isProduction && isVercelProduction
-  })
-  
   cookieStore.set("restaurant_admin_session", sessionData, {
     httpOnly: true,
-    secure: isProduction && isVercelProduction, // Only secure in actual production
-    sameSite: "lax", // "lax" allows cookie to be sent on same-site redirects
+    secure: true, // Muss für v0 iframes zwingend true sein
+    sameSite: "none", // Erlaubt das Setzen des Cookies im Third-Party-Kontext
     maxAge: 60 * 60 * 24, // 24 hours
     path: "/",
   })
