@@ -8,7 +8,7 @@ import { Check, Clock, Phone, MapPin, Printer, RefreshCw, Timer, Truck, Store, A
 import type { Order, OrderItem } from "@/lib/types"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { CancelOrderDialog } from "@/components/admin/cancel-order-dialog"
 import { useSunmiPrint } from "@/hooks/use-sunmi-print"
@@ -28,7 +28,7 @@ export function OrdersTab({ orders: initialOrders, restaurantId }: OrdersTabProp
   const [previousOrderCount, setPreviousOrderCount] = useState(initialOrders.length)
   const [newOrderIds, setNewOrderIds] = useState<Set<number>>(new Set())
   const [completingOrderId, setCompletingOrderId] = useState<number | null>(null)
-  const [previousOrderIds, setPreviousOrderIds] = useState<Set<number>>(new Set(initialOrders.map(o => o.id)))
+  const previousOrderIds = useRef<Set<number>>(new Set(initialOrders.map(o => o.id)))
   
   // Sunmi Print Integration
   const { print: printToSunmi, isSunmiAvailable, checkSunmiService } = useSunmiPrint()
@@ -77,7 +77,7 @@ export function OrdersTab({ orders: initialOrders, restaurantId }: OrdersTabProp
     if (viewMode !== "active") return
     
     const currentOrderIds = new Set(activeOrders.map(o => o.id))
-    const newOrders = activeOrders.filter(order => !previousOrderIds.has(order.id))
+    const newOrders = activeOrders.filter(order => !previousOrderIds.current.has(order.id))
     
     if (newOrders.length > 0) {
       console.log('[v0] New orders detected via polling:', newOrders.length)
@@ -113,8 +113,8 @@ export function OrdersTab({ orders: initialOrders, restaurantId }: OrdersTabProp
     }
     
     // Update previous order IDs
-    setPreviousOrderIds(currentOrderIds)
-  }, [activeOrders, viewMode, previousOrderIds])
+    previousOrderIds.current = currentOrderIds
+  }, [activeOrders, viewMode])
 
   // No realtime connection on Vercel serverless
   const isRealtimeConnected = false
