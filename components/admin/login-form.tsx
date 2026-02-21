@@ -3,6 +3,7 @@
 import type React from "react"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { loginRestaurantAdminCentral } from "@/app/admin/login/actions"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -17,6 +18,7 @@ interface AdminLoginFormProps {
 }
 
 export function AdminLoginForm({ restaurant, isCustomDomain }: AdminLoginFormProps) {
+  const router = useRouter()
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
@@ -32,20 +34,22 @@ export function AdminLoginForm({ restaurant, isCustomDomain }: AdminLoginFormPro
     try {
       const result = await loginRestaurantAdminCentral(username, password)
       
-      // If we get here with an error, show it
-      if (result?.error) {
+      if (result.success && result.redirectUrl) {
+        // Client-side redirect after successful login
+        window.location.href = result.redirectUrl
+        return
+      }
+      
+      if (result.error) {
         setError(result.error)
         setLoading(false)
         return
       }
       
-      // If redirect worked, we won't reach here
+      setError("Ein Fehler ist aufgetreten")
+      setLoading(false)
     } catch (error: any) {
-      // Check if it's a Next.js redirect (expected behavior)
-      if (error?.message?.includes('NEXT_REDIRECT')) {
-        // Redirect is happening, this is success
-        return
-      }
+      console.error("[v0] Login error:", error)
       setError(error?.message || "Ein Fehler ist aufgetreten")
       setLoading(false)
     }
