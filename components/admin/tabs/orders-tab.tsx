@@ -764,6 +764,6 @@ export function OrdersTab({ orders: initialOrders, restaurantId }: OrdersTabProp
             </div>
           </div>
         </div>
-      </>
+      </div>
     )
   }
